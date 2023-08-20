@@ -1,65 +1,12 @@
 use clap::Parser;
-use clap::ValueEnum;
-use config::{ConfigError, ValueKind};
+use config::ConfigError;
 use serde_derive::Deserialize;
-use std::fmt;
+use timetracker_core::format::DateTimeFormat;
+use timetracker_core::format::DurationFormat;
 use timetracker_core::settings::new_core_settings;
+use timetracker_core::settings::new_print_settings;
 use timetracker_core::settings::CoreSettings;
-
-/// Determines the formatting used for dates/times.
-#[derive(Debug, Copy, Clone, ValueEnum, Deserialize)]
-pub enum DateTimeFormatSetting {
-    /// Follows the ISO8601 standard.
-    Iso,
-
-    /// Follows common date-time conventions in the USA.
-    UsaMonthDayYear,
-
-    /// Follows user's preferences for local date/time formating
-    /// rules.
-    Locale,
-}
-
-impl fmt::Display for DateTimeFormatSetting {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            DateTimeFormatSetting::Locale => write!(f, "Locale"),
-            DateTimeFormatSetting::Iso => write!(f, "Iso"),
-            DateTimeFormatSetting::UsaMonthDayYear => write!(f, "UsaMonthDayYear"),
-        }
-    }
-}
-
-impl From<DateTimeFormatSetting> for ValueKind {
-    fn from(value: DateTimeFormatSetting) -> Self {
-        ValueKind::String(format!("{}", value).to_string())
-    }
-}
-
-/// Determines the formatting used for durations.
-#[derive(Debug, Copy, Clone, ValueEnum, Deserialize)]
-pub enum DurationFormatSetting {
-    /// Display exact hours and minutes.
-    HoursMinutes,
-
-    /// Hours as decimal number rounded to 6 minute increments.
-    DecimalHours,
-}
-
-impl fmt::Display for DurationFormatSetting {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            DurationFormatSetting::HoursMinutes => write!(f, "HoursMinutes"),
-            DurationFormatSetting::DecimalHours => write!(f, "DecimalHours"),
-        }
-    }
-}
-
-impl From<DurationFormatSetting> for ValueKind {
-    fn from(value: DurationFormatSetting) -> Self {
-        ValueKind::String(format!("{}", value).to_string())
-    }
-}
+use timetracker_core::settings::PrintSettings;
 
 #[derive(Parser, Debug)]
 #[clap(author = "David Cattermole, Copyright 2023", version, about)]
@@ -71,11 +18,11 @@ pub struct CommandArguments {
 
     /// How should dates/times be displayed?
     #[clap(long, value_enum)]
-    format_datetime: Option<DateTimeFormatSetting>,
+    format_datetime: Option<DateTimeFormat>,
 
     /// How should duration be displayed?
     #[clap(long, value_enum)]
-    format_duration: Option<DurationFormatSetting>,
+    format_duration: Option<DurationFormat>,
 
     /// Display summary of week time. How many hours has been spent
     /// during the week?
@@ -113,37 +60,16 @@ pub struct CommandArguments {
 
 #[derive(Debug, Deserialize)]
 #[allow(unused)]
-pub struct PrintSettings {
-    pub relative_week: i32,
-    pub format_datetime: DateTimeFormatSetting,
-    pub format_duration: DurationFormatSetting,
-    pub display_week: bool,
-    pub display_weekday: bool,
-    pub display_week_task: bool,
-    pub display_weekday_task: bool,
-    pub display_week_software: bool,
-}
-
-#[derive(Debug, Deserialize)]
-#[allow(unused)]
-pub struct AppSettings {
+pub struct PrintAppSettings {
     pub core: CoreSettings,
     pub print: PrintSettings,
 }
 
-impl AppSettings {
+impl PrintAppSettings {
     pub fn new(arguments: CommandArguments) -> Result<Self, ConfigError> {
-        let mut builder = new_core_settings(arguments.database_dir, arguments.database_file_name)?;
-
-        builder = builder
-            .set_default("print.relative_week", 0)?
-            .set_default("print.format_datetime", "Locale")?
-            .set_default("print.format_duration", "HoursMinutes")?
-            .set_default("print.display_week", true)?
-            .set_default("print.display_weekday", true)?
-            .set_default("print.display_week_task", true)?
-            .set_default("print.display_weekday_task", false)?
-            .set_default("print.display_week_software", false)?;
+        let builder =
+            new_core_settings(arguments.database_dir, arguments.database_file_name, true)?;
+        let mut builder = new_print_settings(builder)?;
 
         // Use command line 'arguments' to override the default
         // values. These will always override any configuration file

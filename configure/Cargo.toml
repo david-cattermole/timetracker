@@ -1,25 +1,20 @@
 [package]
-name = "timetracker-recorder"
+name = "timetracker-configure"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+anyhow = "1.0.70"
 chrono = "0.4.19"
 clap = { version = "3.2.23", features = ["std", "derive"], default-features = false }
 config = { version = "0.13.3", features = ["toml"], default-features = false }
-glib = "0.15.5"
-gtk = "0.15.5"
-serde = "1.0.159"
-serde_derive = "1.0.159"
-x11 = "2.19.1"
+dirs = "4.0.0"
 env_logger = "0.10.0"
 log = "0.4.17"
-anyhow = "1.0.70"
+serde = "1.0.159"
+serde_derive = "1.0.159"
+toml = "0.7.3"
 
 [dependencies.timetracker-core]
 path = "../core"
-
-[build-dependencies]
-cc = { version = "1.0", features = ["parallel"] }
-pkg-config = "0.3"

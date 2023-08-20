@@ -1,7 +1,7 @@
 use crate::linux_process::get_process_id_executable_name;
 use crate::linux_process::read_process_environment_variables;
-use crate::settings::AppSettings;
 use crate::settings::CommandArguments;
+use crate::settings::RecorderAppSettings;
 use anyhow::{bail, Result};
 use chrono;
 use clap::Parser;
@@ -13,7 +13,7 @@ use timetracker_core::filesystem::get_database_file_path;
 use timetracker_core::storage::Storage;
 
 mod linux_process;
-pub mod linux_x11;
+mod linux_x11;
 mod settings;
 
 /// How many enties are stored in memory before being saved to the
@@ -35,7 +35,7 @@ fn main() -> Result<()> {
 
     let args = CommandArguments::parse();
 
-    let settings = AppSettings::new(args);
+    let settings = RecorderAppSettings::new(args);
     if !settings.is_ok() {
         bail!("Settings are invalid: {:?}", settings);
     }
@@ -112,10 +112,13 @@ fn main() -> Result<()> {
                     .expect("Database file path should be valid"),
                 settings.core.record_interval_seconds,
             );
-            if storage.is_err() {
-                error!("Could not open storage.");
-                gtk::main_quit();
-                return glib::Continue(false);
+            match storage {
+                Err(err) => {
+                    error!("Could not open storage. {:?}", err);
+                    gtk::main_quit();
+                    return glib::Continue(false);
+                }
+                _ => (),
             }
             let mut storage = storage.unwrap();
 
@@ -124,10 +127,13 @@ fn main() -> Result<()> {
                 ENTRY_BUFFER.clear();
             }
             let write_result = storage.write_entries();
-            if write_result.is_err() {
-                error!("Could not write to storage.");
-                gtk::main_quit();
-                return glib::Continue(false);
+            match write_result {
+                Err(err) => {
+                    error!("Could not write to storage. {:#?}", err);
+                    gtk::main_quit();
+                    return glib::Continue(false);
+                }
+                _ => (),
             }
             storage.close();
         }

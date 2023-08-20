@@ -1,8 +1,12 @@
 use chrono;
 use chrono::TimeZone;
+use clap::ValueEnum;
+use config::ValueKind;
+use serde_derive::{Deserialize, Serialize};
+use std::fmt;
 
 /// Determines the formatting used for dates/times.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, ValueEnum, Serialize, Deserialize)]
 pub enum DateTimeFormat {
     /// Follows the ISO8601 standard.
     Iso,
@@ -15,8 +19,24 @@ pub enum DateTimeFormat {
     Locale,
 }
 
+impl fmt::Display for DateTimeFormat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            DateTimeFormat::Locale => write!(f, "Locale"),
+            DateTimeFormat::Iso => write!(f, "Iso"),
+            DateTimeFormat::UsaMonthDayYear => write!(f, "UsaMonthDayYear"),
+        }
+    }
+}
+
+impl From<DateTimeFormat> for ValueKind {
+    fn from(value: DateTimeFormat) -> Self {
+        ValueKind::String(format!("{}", value).to_string())
+    }
+}
+
 /// Determines the formatting used for durations.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, ValueEnum, Serialize, Deserialize)]
 pub enum DurationFormat {
     /// Display exact hours and minutes.
     HoursMinutes,
@@ -26,6 +46,81 @@ pub enum DurationFormat {
 
     /// Hours as decimal number rounded to 6 minute increments.
     DecimalHours,
+}
+
+impl fmt::Display for DurationFormat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            DurationFormat::HoursMinutes => write!(f, "HoursMinutes"),
+            DurationFormat::HoursMinutesSeconds => write!(f, "HoursMinutesSeconds"),
+            DurationFormat::DecimalHours => write!(f, "DecimalHours"),
+        }
+    }
+}
+
+impl From<DurationFormat> for ValueKind {
+    fn from(value: DurationFormat) -> Self {
+        ValueKind::String(format!("{}", value).to_string())
+    }
+}
+
+#[derive(Debug, Copy, Clone, ValueEnum, Serialize, Deserialize)]
+pub enum FirstDayOfWeek {
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+    Sunday,
+}
+
+impl fmt::Display for FirstDayOfWeek {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            FirstDayOfWeek::Monday => write!(f, "Monday"),
+            FirstDayOfWeek::Tuesday => write!(f, "Tuesday"),
+            FirstDayOfWeek::Wednesday => write!(f, "Wednesday"),
+            FirstDayOfWeek::Thursday => write!(f, "Thursday"),
+            FirstDayOfWeek::Friday => write!(f, "Friday"),
+            FirstDayOfWeek::Saturday => write!(f, "Saturday"),
+            FirstDayOfWeek::Sunday => write!(f, "Sunday"),
+        }
+    }
+}
+
+impl From<FirstDayOfWeek> for ValueKind {
+    fn from(value: FirstDayOfWeek) -> Self {
+        ValueKind::String(format!("{}", value).to_string())
+    }
+}
+
+/// The options for representing a duration of time.
+#[derive(Debug, Copy, Clone, ValueEnum, Serialize, Deserialize)]
+pub enum TimeDuration {
+    /// A full week duration of Monday 00:00 AM to Sunday 23:59 PM.
+    FullWeek,
+
+    /// A full week duration (Monday to Sunday), split into each day
+    /// 00:00 AM) to 23:59 PM.
+    FullWeekPerDay,
+}
+
+impl fmt::Display for TimeDuration {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            TimeDuration::FullWeek => write!(f, "FullWeek"),
+            TimeDuration::FullWeekPerDay => {
+                write!(f, "FullWeekPerDay")
+            }
+        }
+    }
+}
+
+impl From<TimeDuration> for ValueKind {
+    fn from(value: TimeDuration) -> Self {
+        ValueKind::String(format!("{}", value).to_string())
+    }
 }
 
 pub fn format_duration(duration: chrono::Duration, duration_format: DurationFormat) -> String {

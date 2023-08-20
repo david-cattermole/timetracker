@@ -2,6 +2,7 @@
 
 members = [
     "core",
+    "configure",
     "print",
     "recorder",
 ]

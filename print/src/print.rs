@@ -13,6 +13,8 @@ use timetracker_core::format::format_date;
 use timetracker_core::format::format_duration;
 use timetracker_core::format::DateTimeFormat;
 use timetracker_core::format::DurationFormat;
+use timetracker_core::format::FirstDayOfWeek;
+use timetracker_core::format::TimeDuration;
 use timetracker_core::storage::Storage;
 
 fn combine_start_end_lines(
@@ -312,7 +314,7 @@ fn generate_week_software(
 
 /// Get the week-number to print, taking the relative number given by
 /// the user into account.
-fn get_relative_week_start_end(relative_week_index: i32) -> DateTimeLocalPair {
+pub fn get_relative_week_start_end(relative_week_index: i32) -> DateTimeLocalPair {
     let today_local_timezone = chrono::Local::now();
     let today_iso_week = today_local_timezone.iso_week();
     let today_week_num: u32 = (today_iso_week.week() as i64 + relative_week_index as i64)
@@ -417,5 +419,24 @@ pub fn print_entries(
         println!("{}", line);
     }
 
+    Ok(())
+}
+
+/// Prints the time entries with the various settings given.
+pub fn print_preset(
+    _storage: &mut Storage,
+    _week_datetime_pair: DateTimeLocalPair,
+    // filter_executable: bool,
+    // filter_env_vars: Vec<String>,
+    _time_duration: TimeDuration,
+    _datetime_format: DateTimeFormat,
+    _duration_format: DurationFormat,
+    _first_day_of_week: FirstDayOfWeek,
+    // output_stream: MyOutputStream
+) -> Result<()> {
+    // let mut lines = Vec::new();
+    // for line in &lines {
+    //     println!("{}", line);
+    // }
     Ok(())
 }

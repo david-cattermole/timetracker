@@ -205,6 +205,13 @@ fn update_existing_entry_rows_into_database(
     Ok(())
 }
 
+fn convert_entry_var_to_sql_string_value(entry_var_name: &Option<String>) -> sqlite::Value {
+    match &entry_var_name {
+        Some(value) => sqlite::Value::String(value.to_string()),
+        None => sqlite::Value::Null,
+    }
+}
+
 fn insert_new_entry_rows_into_database(
     connection: &sqlite::Connection,
     new_entries_dedup: &Vec<Entry>,
@@ -274,39 +281,15 @@ fn insert_new_entry_rows_into_database(
             None => sqlite::Value::Null,
         };
 
-        let var1_name = match &entry.vars.var1_name {
-            Some(value) => sqlite::Value::String(value.to_string()),
-            None => sqlite::Value::Null,
-        };
-        let var2_name = match &entry.vars.var2_name {
-            Some(value) => sqlite::Value::String(value.to_string()),
-            None => sqlite::Value::Null,
-        };
-        let var3_name = match &entry.vars.var3_name {
-            Some(value) => sqlite::Value::String(value.to_string()),
-            None => sqlite::Value::Null,
-        };
-        let var4_name = match &entry.vars.var4_name {
-            Some(value) => sqlite::Value::String(value.to_string()),
-            None => sqlite::Value::Null,
-        };
+        let var1_name = convert_entry_var_to_sql_string_value(&entry.vars.var1_name);
+        let var2_name = convert_entry_var_to_sql_string_value(&entry.vars.var2_name);
+        let var3_name = convert_entry_var_to_sql_string_value(&entry.vars.var3_name);
+        let var4_name = convert_entry_var_to_sql_string_value(&entry.vars.var4_name);
 
-        let var1_value = match &entry.vars.var1_value {
-            Some(value) => sqlite::Value::String(value.to_string()),
-            None => sqlite::Value::Null,
-        };
-        let var2_value = match &entry.vars.var2_value {
-            Some(value) => sqlite::Value::String(value.to_string()),
-            None => sqlite::Value::Null,
-        };
-        let var3_value = match &entry.vars.var3_value {
-            Some(value) => sqlite::Value::String(value.to_string()),
-            None => sqlite::Value::Null,
-        };
-        let var4_value = match &entry.vars.var4_value {
-            Some(value) => sqlite::Value::String(value.to_string()),
-            None => sqlite::Value::Null,
-        };
+        let var1_value = convert_entry_var_to_sql_string_value(&entry.vars.var1_value);
+        let var2_value = convert_entry_var_to_sql_string_value(&entry.vars.var2_value);
+        let var3_value = convert_entry_var_to_sql_string_value(&entry.vars.var3_value);
+        let var4_value = convert_entry_var_to_sql_string_value(&entry.vars.var4_value);
 
         debug!("INSERT Entry [ Time: {}, Duration: {}, Status: {:?}, Executable: {:?}, Var1: {:?} = {:?}, Var2: {:?} = {:?}, Var3: {:?} = {:?}, Var4: {:?} = {:?} ]",
                time_formatted,
@@ -490,18 +473,6 @@ impl Storage {
     }
 
     pub fn write_entries(&mut self) -> Result<()> {
-        // TODO: When we write entries into the database the first time
-        // we should first find the variable names in the database,
-        // and add them if they are missing, then cache the 'variable
-        // name ids' to avoid future database calls for the entire
-        // lifetime of the program.
-
-        // TODO: In addition to caching the "variable name ids", we
-        // may also want to keep an in-memory least-recently-used
-        // cache of "variable value ids", but with a fixed amount of
-        // enties allowed - this is a "speed vs size" trade-off, to
-        // avoid database queries calls.
-
         // Execute the entires and close the SQLite database
         // connection.
         self.connection.execute("BEGIN TRANSACTION;")?;

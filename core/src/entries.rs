@@ -1,3 +1,5 @@
+
+
 use log::debug;
 use std::collections::HashMap;
 
@@ -27,6 +29,26 @@ pub struct EntryVariablesList {
     pub var2_value: Option<String>,
     pub var3_value: Option<String>,
     pub var4_value: Option<String>,
+}
+
+fn set_variable_from_environ_vars(
+    variable_name: &Option<String>,
+    variable_value: &mut Option<String>,
+    environ_vars: &HashMap<String, String>,
+) {
+    match &variable_name {
+        Some(name) => match environ_vars.get(name) {
+            Some(value) => {
+                debug!("env var name: {:?} value: {:?}", name, value);
+                *variable_value = Some(value.to_string());
+            }
+            None => {
+                debug!("env var name {:?} is unavailable.", name);
+                *variable_value = None;
+            }
+        },
+        None => *variable_value = None,
+    };
 }
 
 impl EntryVariablesList {
@@ -69,19 +91,10 @@ impl EntryVariablesList {
     }
 
     pub fn replace_with_environ_vars(&mut self, environ_vars: &HashMap<String, String>) {
-        match &self.var1_name {
-            Some(name) => match environ_vars.get(name) {
-                Some(value) => {
-                    debug!("envvar name: {:?} value: {:?}", name, value);
-                    self.var1_value = Some(value.to_string());
-                }
-                None => {
-                    debug!("envvar name {:?} is unavailable.", name);
-                    self.var1_value = None;
-                }
-            },
-            None => self.var1_value = None,
-        }
+        set_variable_from_environ_vars(&self.var1_name, &mut self.var1_value, &environ_vars);
+        set_variable_from_environ_vars(&self.var2_name, &mut self.var2_value, &environ_vars);
+        set_variable_from_environ_vars(&self.var3_name, &mut self.var3_value, &environ_vars);
+        set_variable_from_environ_vars(&self.var4_name, &mut self.var4_value, &environ_vars);
     }
 }
 

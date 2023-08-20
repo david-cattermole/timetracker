@@ -2,6 +2,7 @@ use clap::Parser;
 use config::ConfigError;
 use serde_derive::Deserialize;
 use timetracker_core::settings::new_core_settings;
+use timetracker_core::settings::new_recorder_settings;
 use timetracker_core::settings::CoreSettings;
 
 #[derive(Parser, Debug)]
@@ -18,13 +19,15 @@ pub struct CommandArguments {
 
 #[derive(Debug, Deserialize)]
 #[allow(unused)]
-pub struct AppSettings {
+pub struct RecorderAppSettings {
     pub core: CoreSettings,
 }
 
-impl AppSettings {
+impl RecorderAppSettings {
     pub fn new(arguments: CommandArguments) -> Result<Self, ConfigError> {
-        let builder = new_core_settings(arguments.database_dir, arguments.database_file_name)?;
+        let builder =
+            new_core_settings(arguments.database_dir, arguments.database_file_name, true)?;
+        let builder = new_recorder_settings(builder)?;
 
         let settings = builder.build()?;
         settings.try_deserialize()
