@@ -1,0 +1,26 @@
+[package]
+name = "timetracker-recorder"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono = "0.4.19"
+clap = { version = "3.2.5", features = ["derive"] }
+config = "0.13.3"
+glib = "0.15.5"
+gtk = "0.15.5"
+serde = "1.0.159"
+serde_derive = "1.0.159"
+x11 = "2.19.1"
+env_logger = "0.10.0"
+log = "0.4.17"
+anyhow = "1.0.70"
+
+[dependencies.timetracker-core]
+path = "../core"
+
+[build-dependencies]
+cc = { version = "1.0", features = ["parallel"] }
+pkg-config = "0.3"
