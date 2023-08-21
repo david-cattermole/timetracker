@@ -39,6 +39,29 @@ pub fn find_existing_file_path(user_dir_path: Option<String>, file_name: &str) -
     None
 }
 
+/// Search for an existing default configuration directory.
+pub fn find_existing_configuration_directory_path() -> Option<PathBuf> {
+    // $XDG_CONFIG_HOME or $HOME/.config (on Linux)
+    if let Some(value) = dirs::config_dir() {
+        let mut path = PathBuf::new();
+        path.push(value);
+        if path.is_dir() {
+            return Some(path);
+        }
+    }
+
+    // $HOME (on Linux)
+    if let Some(value) = dirs::home_dir() {
+        let mut path = PathBuf::new();
+        path.push(value);
+        if path.is_dir() {
+            return Some(path);
+        }
+    }
+
+    None
+}
+
 pub fn construct_file_path(user_dir_path: &Option<String>, file_name: &str) -> Option<PathBuf> {
     if let Some(value) = user_dir_path {
         let value = shellexpand::full(&value).ok()?.into_owned();

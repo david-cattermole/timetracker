@@ -1,3 +1,4 @@
+use crate::filesystem::find_existing_configuration_directory_path;
 use crate::filesystem::find_existing_file_path;
 use crate::format::DateTimeFormat;
 use crate::format::DurationFormat;
@@ -19,22 +20,14 @@ pub const RECORD_INTERVAL_SECONDS: u64 = 1;
 pub const USER_IS_IDLE_LIMIT_SECONDS: u64 = 30;
 
 /// The name of the file used to save timetracker data.
-const DATABASE_FILE_NAME: &str = ".timetracker.sqlite3";
-
-/// The database default directory - the home directory. This path is
-/// expanded using the 'shellexpand' crate.
-const DATABASE_DIR: &str = "~/";
-
-/// The configuration default directory - the home directory. This path is
-/// expanded using the 'shellexpand' crate.
-pub const CONFIG_DIR: &str = "~/";
+const DEFAULT_DATABASE_FILE_NAME: &str = ".timetracker.sqlite3";
 
 /// The name of the file used to read timetracker configuration data.
 ///
 /// The configuration file is found by searching in the
 /// "TIMETRACKER_CONFIG_PATH" environment variable (if it exists),
 /// then in the home directory.
-pub const CONFIG_FILE_NAME: &str = ".timetracker.toml";
+pub const DEFAULT_CONFIG_FILE_NAME: &str = ".timetracker.toml";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EnvVarSettings {
@@ -55,9 +48,15 @@ pub fn new_core_settings(
 ) -> Result<ConfigBuilder<DefaultState>, ConfigError> {
     let env_var_names = vec!["PWD".to_string(); 1];
 
+    let default_database_dir = find_existing_configuration_directory_path()
+        .expect("Could not find a default database directory ($HOME, $HOME/.config or $XDG_CONFIG_HOME).")
+        .into_os_string()
+        .into_string()
+        .unwrap();
+
     let mut builder = Config::builder()
-        .set_default("core.database_dir", DATABASE_DIR)?
-        .set_default("core.database_file_name", DATABASE_FILE_NAME)?
+        .set_default("core.database_dir", default_database_dir)?
+        .set_default("core.database_file_name", DEFAULT_DATABASE_FILE_NAME)?
         .set_default("core.environment_variables.names", env_var_names)?
         //
         // Allows settings from environment variables (with a prefix
@@ -71,7 +70,7 @@ pub fn new_core_settings(
 
     // Runtime configuration file options.
     if load_user_overrides {
-        let config_file_name = CONFIG_FILE_NAME;
+        let config_file_name = DEFAULT_CONFIG_FILE_NAME;
         let env_config_path = std::env::var("TIMETRACKER_CONFIG_PATH");
         let user_config_path: Option<String> = match env_config_path {
             Ok(value) => Some(value),
@@ -245,12 +244,8 @@ pub fn new_print_settings(
     let preset_names = vec![
         "summary_week".to_string(),
         "summary_weekdays".to_string(),
-        "activity_week".to_string(),
-        "activity_weekdays".to_string(),
         "working_directory_week".to_string(),
-        "working_directory_weekdays".to_string(),
         "software_week".to_string(),
-        "software_weekdays".to_string(),
     ];
 
     // Default presets that will always be available to users, unless

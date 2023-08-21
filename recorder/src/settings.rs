@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use config::ConfigError;
 use serde_derive::Deserialize;
 use timetracker_core::settings::new_core_settings;
@@ -7,7 +7,11 @@ use timetracker_core::settings::CoreSettings;
 
 #[derive(Parser, Debug)]
 #[clap(author = "David Cattermole, Copyright 2023", version, about)]
+#[clap(propagate_version = true)]
 pub struct CommandArguments {
+    #[clap(subcommand)]
+    pub command: CommandModes,
+
     /// Override the directory to search for the database file.
     #[clap(long, value_parser)]
     pub database_dir: Option<String>,
@@ -15,12 +19,20 @@ pub struct CommandArguments {
     /// Override the name of the database file to open.
     #[clap(long, value_parser)]
     pub database_file_name: Option<String>,
+}
 
-    /// Automatically terminate (SIGTERM) existing
-    /// timetracker-recorder processes (to ensure only one process
-    /// runs at any one time).
-    #[clap(long, value_parser, default_value_t = false)]
-    pub terminate_existing_processes: bool,
+#[derive(Debug, Subcommand)]
+pub enum CommandModes {
+    /// Start the Recorder
+    Start {
+        /// Automatically terminate (SIGTERM) existing
+        /// timetracker-recorder processes (to ensure only one process
+        /// runs at any one time).
+        #[clap(long, value_parser, default_value_t = false)]
+        terminate_existing_processes: bool,
+    },
+    /// Stop the recorder
+    Stop,
 }
 
 #[derive(Debug, Deserialize)]

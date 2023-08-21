@@ -1,12 +1,12 @@
 use clap::Parser;
 use config::ConfigError;
 use serde_derive::{Deserialize, Serialize};
+use timetracker_core::filesystem::find_existing_configuration_directory_path;
 use timetracker_core::settings::new_core_settings;
 use timetracker_core::settings::new_print_settings;
 use timetracker_core::settings::CoreSettings;
 use timetracker_core::settings::PrintSettings;
-use timetracker_core::settings::CONFIG_DIR;
-use timetracker_core::settings::CONFIG_FILE_NAME;
+use timetracker_core::settings::DEFAULT_CONFIG_FILE_NAME;
 
 #[derive(Parser, Debug)]
 #[clap(author = "David Cattermole, Copyright 2023", version, about)]
@@ -42,9 +42,15 @@ impl ConfigureAppSettings {
     pub fn new(arguments: &CommandArguments) -> Result<Self, ConfigError> {
         let mut builder = new_core_settings(None, None, arguments.load_user_overrides)?;
 
+        let default_config_dir = find_existing_configuration_directory_path()
+            .expect("Could not find a default config directory ($HOME, $HOME/.config or $XDG_CONFIG_HOME).")
+        .into_os_string()
+        .into_string()
+        .unwrap();
+
         builder = builder
-            .set_default("configure.config_dir", CONFIG_DIR)?
-            .set_default("configure.config_file_name", CONFIG_FILE_NAME)?;
+            .set_default("configure.config_dir", default_config_dir)?
+            .set_default("configure.config_file_name", DEFAULT_CONFIG_FILE_NAME)?;
 
         let settings = builder.build()?;
         settings.try_deserialize()

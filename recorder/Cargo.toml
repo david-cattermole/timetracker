@@ -17,6 +17,7 @@ env_logger = "0.10.0"
 log = "0.4.17"
 anyhow = "1.0.70"
 once_cell = "1.17.1"
+libc = "0.2.142"
 
 [dependencies.timetracker-core]
 path = "../core"

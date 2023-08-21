@@ -1,4 +1,5 @@
 use crate::linux_x11::ProcessID;
+use anyhow::anyhow;
 use anyhow::Result;
 use std::collections::HashMap;
 use std::fs::read_to_string;
@@ -6,12 +7,16 @@ use std::path::PathBuf;
 use std::process::Command;
 use timetracker_core::format_short_executable_name;
 
+type UserID = u32;
+
 pub fn read_process_environment_variables(
     process_id: ProcessID,
 ) -> Result<HashMap<String, String>> {
     // NOTE: This function assumes the OS running is Linux.
-    let mut path = PathBuf::new();
+
     let process_id_str: String = format!("{}", process_id);
+
+    let mut path = PathBuf::new();
     path.push("/");
     path.push("proc");
     path.push(process_id_str);
@@ -37,11 +42,57 @@ pub fn read_process_environment_variables(
     Ok(map)
 }
 
-pub fn find_process_ids_by_executable_name(
+fn parse_loginuid_file_contents(file_content: &String) -> Result<UserID> {
+    let lines: Vec<&str> = file_content.split('\0').collect();
+
+    match lines.is_empty() {
+        true => Err(anyhow!(
+            "/proc/####/loginuid file does not have any lines in it."
+        )),
+        false => {
+            let line = lines[0].trim();
+            let user_id = line.parse::<UserID>()?;
+            Ok(user_id)
+        }
+    }
+}
+
+/// Get the current user's user id (uid).
+///
+/// On Linux multiple users may be logged into the same machine and
+/// running timetracker-recorder at the same time.
+pub fn get_user_id_running_process_id(process_id: ProcessID) -> Result<UserID> {
+    // NOTE: This function assumes the OS running is Linux.
+
+    // TODO: Make sure this function actually returns the correct user
+    // ID when there are multiple users on a computer running this
+    // process concurrently.
+
+    let process_id_str: String = format!("{}", process_id);
+
+    let mut path = PathBuf::new();
+    path.push("/");
+    path.push("proc");
+    path.push(process_id_str);
+    path.push("loginuid");
+
+    let file_content = read_to_string(&path)?;
+    let user_id = parse_loginuid_file_contents(&file_content)?;
+    Ok(user_id)
+}
+
+pub fn find_process_ids_by_user_and_executable_name(
     executable_name: &str,
-    this_process_id: u32,
+    this_user_id: UserID,
+    this_process_id: ProcessID,
 ) -> Result<Vec<ProcessID>> {
     // NOTE: This function assumes the OS running is Linux.
+
+    // TODO: Get the current user's user id (uid) and make sure to
+    // process the process ids to only processes that are owned by the
+    // current user. On Linux multiple users may be logged into the
+    // same machine and running timetracker-recorder at the same time
+    // on the same machine.
     let mut path = PathBuf::new();
     path.push("/");
     path.push("proc");
@@ -64,9 +115,18 @@ pub fn find_process_ids_by_executable_name(
         .filter_map(|p| {
             // debug!("Reading: {:?}", p);
             let process_id_str = p.file_name();
-            let mut path = p.to_path_buf();
-            path.push("cmdline");
-            let file_content = read_to_string(path).ok()?;
+
+            let mut loginuid_path = p.to_path_buf();
+            loginuid_path.push("loginuid");
+            let file_content = read_to_string(loginuid_path).ok()?;
+            let user_id = parse_loginuid_file_contents(&file_content).ok()?;
+            if user_id != this_user_id {
+                return None;
+            }
+
+            let mut cmdline_path = p.to_path_buf();
+            cmdline_path.push("cmdline");
+            let file_content = read_to_string(cmdline_path).ok()?;
 
             let executable =
                 timetracker_core::strip_executable_name(&file_content.replace('\0', " "))

@@ -11,7 +11,7 @@ mod settings;
 
 fn main() -> Result<()> {
     let env = env_logger::Env::default()
-        .filter("TIMETRACKER_LOG")
+        .filter_or("TIMETRACKER_LOG", "warn")
         .write_style("TIMETRACKER_LOG_STYLE");
     env_logger::init_from_env(env);
 

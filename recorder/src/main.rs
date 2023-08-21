@@ -1,14 +1,19 @@
-use crate::linux_process::find_process_ids_by_executable_name;
+use crate::linux_process::find_process_ids_by_user_and_executable_name;
 use crate::linux_process::get_process_id_executable_name;
+use crate::linux_process::get_user_id_running_process_id;
 use crate::linux_process::read_process_environment_variables;
 use crate::linux_process::terminate_processes;
+use crate::linux_signal::install_signal_handler;
 use crate::settings::CommandArguments;
+use crate::settings::CommandModes;
 use crate::settings::RecorderAppSettings;
 use anyhow::{bail, Result};
 use clap::Parser;
-use log::{debug, error, warn};
+use libc;
+use log::{debug, error, info, warn};
 use once_cell::sync::Lazy;
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync;
 use std::sync::Mutex;
 use std::thread;
@@ -22,6 +27,7 @@ use timetracker_core::settings::USER_IS_IDLE_LIMIT_SECONDS;
 use timetracker_core::storage::Storage;
 
 mod linux_process;
+mod linux_signal;
 mod linux_x11;
 mod settings;
 
@@ -35,6 +41,12 @@ static mut ENTRY_BUFFER: Lazy<Mutex<Vec<Entry>>> = Lazy::new(|| Mutex::new(vec![
 
 /// The global status of the user; Is the user active or idle?
 static mut ENTRY_STATUS: EntryStatus = EntryStatus::Uninitialized;
+
+/// The database file path is stored so the signal handler clean up
+/// function (named "handle_signal") can use it to write data to to
+/// the database when exiting the process.
+static mut CLEANUP_DATABASE_FILE_PATH: Lazy<Mutex<PathBuf>> =
+    Lazy::new(|| Mutex::new(PathBuf::new()));
 
 /// The name of this executable file name.
 const THIS_EXECUTABLE_NAME: &str = "timetracker-recorder";
@@ -111,26 +123,56 @@ fn write_data_to_storage(database_file_path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn main() -> Result<()> {
-    let env = env_logger::Env::default()
-        .filter("TIMETRACKER_LOG")
-        .write_style("TIMETRACKER_LOG_STYLE");
-    env_logger::init_from_env(env);
+/// Function that gets called when this process is given a signal
+/// (such as 'SIGINT' number 2 or 'SIGTERM' number 15) and told to
+/// terminate.
+extern "C" fn handle_signal(signal_number: libc::c_int) {
+    warn!("Received signal {}, exiting gracefully...", signal_number);
 
-    let args = CommandArguments::parse();
+    let database_file_path = unsafe { &CLEANUP_DATABASE_FILE_PATH.lock().unwrap() };
+    write_data_to_storage(&database_file_path).unwrap();
 
-    let settings = RecorderAppSettings::new(&args);
-    if settings.is_err() {
-        bail!("Settings are invalid: {:?}", settings);
-    }
-    let settings = settings?;
-    debug!("Settings validated: {:#?}", settings);
+    // This will stop the full program, along with all threads
+    // (including the main thread).
+    std::process::abort();
+}
+
+/// Run to start recording activity.
+fn start_recording(
+    _args: &CommandArguments,
+    settings: RecorderAppSettings,
+    terminate_existing_processes: bool,
+) -> Result<()> {
+    println!("Starting Time Tracker Recorder...");
+
+    let database_file_path = get_database_file_path(
+        &settings.core.database_dir,
+        &settings.core.database_file_name,
+    )
+    .expect("Database file path should be valid");
+    println!("Database file: {:?}", database_file_path);
+
+    // Store a copy of the database file path in static memory, so the
+    // "handle_signal" function can use it.
+    unsafe {
+        let mut cleanup_database_file_path = CLEANUP_DATABASE_FILE_PATH.lock().unwrap();
+        *cleanup_database_file_path = database_file_path.clone();
+    };
+
+    // Signal handlers allow us to clean up and write data to the
+    // database before the process shuts down.
+    install_signal_handler(libc::SIGINT, handle_signal as usize);
+    install_signal_handler(libc::SIGTERM, handle_signal as usize);
 
     let this_process_id = std::process::id();
-    let running_process_ids =
-        find_process_ids_by_executable_name(THIS_EXECUTABLE_NAME, this_process_id)?;
+    let this_user_id = get_user_id_running_process_id(this_process_id)?;
+    let running_process_ids = find_process_ids_by_user_and_executable_name(
+        THIS_EXECUTABLE_NAME,
+        this_user_id,
+        this_process_id,
+    )?;
     if !running_process_ids.is_empty() {
-        if args.terminate_existing_processes {
+        if terminate_existing_processes {
             terminate_processes(&running_process_ids)?;
         } else {
             error!(
@@ -141,13 +183,6 @@ fn main() -> Result<()> {
             return Ok(());
         }
     }
-
-    let database_file_path = get_database_file_path(
-        &settings.core.database_dir,
-        &settings.core.database_file_name,
-    )
-    .expect("Database file path should be valid");
-    println!("Database file: {:?}", database_file_path);
 
     gtk::init()?;
 
@@ -243,6 +278,59 @@ fn main() -> Result<()> {
 
     println!("Running Time Tracker Recorder...");
     gtk::main();
+
+    Ok(())
+}
+
+/// Stops recording activity by finding existing processes and sending
+/// a SIGTERM signal.
+fn stop_recording() -> Result<()> {
+    println!("Stopping Time Tracker Recorder...");
+
+    let this_process_id = std::process::id();
+    let this_user_id = get_user_id_running_process_id(this_process_id)?;
+    let running_process_ids = find_process_ids_by_user_and_executable_name(
+        THIS_EXECUTABLE_NAME,
+        this_user_id,
+        this_process_id,
+    )?;
+    info!(
+        "Found {} running process ids for {}: {:?}.",
+        running_process_ids.len(),
+        THIS_EXECUTABLE_NAME,
+        running_process_ids
+    );
+
+    if running_process_ids.is_empty() {
+        warn!("No {} processes found to stop.", THIS_EXECUTABLE_NAME);
+    } else {
+        terminate_processes(&running_process_ids)?;
+    }
+
+    Ok(())
+}
+
+fn main() -> Result<()> {
+    let env = env_logger::Env::default()
+        .filter_or("TIMETRACKER_LOG", "warn")
+        .write_style("TIMETRACKER_LOG_STYLE");
+    env_logger::init_from_env(env);
+
+    let args = CommandArguments::parse();
+
+    let settings = RecorderAppSettings::new(&args);
+    if settings.is_err() {
+        bail!("Settings are invalid: {:?}", settings);
+    }
+    let settings = settings?;
+    debug!("Settings validated: {:#?}", settings);
+
+    match &args.command {
+        CommandModes::Start {
+            terminate_existing_processes,
+        } => start_recording(&args, settings, *terminate_existing_processes)?,
+        CommandModes::Stop => stop_recording()?,
+    }
 
     Ok(())
 }
