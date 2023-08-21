@@ -78,6 +78,9 @@ $ timetracker-print -p activity_weekdays -p software_week
 $ timetracker-print --list-presets
 ```
 
+All the Timetracker commands support the '-h' or '--help' flags to
+print help.
+
 ## Configuration File Example
 
 The configuration file can be edited to record and print information
@@ -121,6 +124,19 @@ print_type = "Variables"
 time_scale = "Week"
 variable_names = ["PROJECT", "SEQUENCE", "SHOT"]
 ```
+
+## Installation
+
+Follow the instructions in the
+[INSTALL.md](https://github.com/david-cattermole/timetracker/blob/main/INSTALL.md)
+file for more information.
+
+## Contributions
+
+The
+[DEVELOPER.md](https://github.com/david-cattermole/timetracker/blob/main/DEVELOPER.md)
+file contains information for developers and people wanting to make
+changes to Timetracker.
 
 ## License
 
