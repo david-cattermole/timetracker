@@ -31,7 +31,7 @@ impl fmt::Display for DateTimeFormat {
 
 impl From<DateTimeFormat> for ValueKind {
     fn from(value: DateTimeFormat) -> Self {
-        ValueKind::String(format!("{}", value).to_string())
+        ValueKind::String(format!("{}", value))
     }
 }
 
@@ -60,66 +60,36 @@ impl fmt::Display for DurationFormat {
 
 impl From<DurationFormat> for ValueKind {
     fn from(value: DurationFormat) -> Self {
-        ValueKind::String(format!("{}", value).to_string())
-    }
-}
-
-#[derive(Debug, Copy, Clone, ValueEnum, Serialize, Deserialize)]
-pub enum FirstDayOfWeek {
-    Monday,
-    Tuesday,
-    Wednesday,
-    Thursday,
-    Friday,
-    Saturday,
-    Sunday,
-}
-
-impl fmt::Display for FirstDayOfWeek {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            FirstDayOfWeek::Monday => write!(f, "Monday"),
-            FirstDayOfWeek::Tuesday => write!(f, "Tuesday"),
-            FirstDayOfWeek::Wednesday => write!(f, "Wednesday"),
-            FirstDayOfWeek::Thursday => write!(f, "Thursday"),
-            FirstDayOfWeek::Friday => write!(f, "Friday"),
-            FirstDayOfWeek::Saturday => write!(f, "Saturday"),
-            FirstDayOfWeek::Sunday => write!(f, "Sunday"),
-        }
-    }
-}
-
-impl From<FirstDayOfWeek> for ValueKind {
-    fn from(value: FirstDayOfWeek) -> Self {
-        ValueKind::String(format!("{}", value).to_string())
+        ValueKind::String(format!("{}", value))
     }
 }
 
 /// The options for representing a duration of time.
 #[derive(Debug, Copy, Clone, ValueEnum, Serialize, Deserialize)]
-pub enum TimeDuration {
-    /// A full week duration of Monday 00:00 AM to Sunday 23:59 PM.
-    FullWeek,
+pub enum TimeScale {
+    /// A week-long duration of first day (usually Monday) at 00:00 AM
+    /// to last day (usually Sunday) 23:59 PM.
+    Week,
 
-    /// A full week duration (Monday to Sunday), split into each day
+    /// A week duration (usually Monday to Sunday), split into each day
     /// 00:00 AM) to 23:59 PM.
-    FullWeekPerDay,
+    Weekday,
 }
 
-impl fmt::Display for TimeDuration {
+impl fmt::Display for TimeScale {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            TimeDuration::FullWeek => write!(f, "FullWeek"),
-            TimeDuration::FullWeekPerDay => {
-                write!(f, "FullWeekPerDay")
+            TimeScale::Week => write!(f, "Week"),
+            TimeScale::Weekday => {
+                write!(f, "Weekday")
             }
         }
     }
 }
 
-impl From<TimeDuration> for ValueKind {
-    fn from(value: TimeDuration) -> Self {
-        ValueKind::String(format!("{}", value).to_string())
+impl From<TimeScale> for ValueKind {
+    fn from(value: TimeScale) -> Self {
+        ValueKind::String(format!("{}", value))
     }
 }
 
@@ -151,7 +121,7 @@ pub fn format_duration(duration: chrono::Duration, duration_format: DurationForm
                 "00h 00m".to_string()
             } else {
                 let minutes_rem = minutes.checked_rem(60).unwrap();
-                format!("{:02}h {:02}m", hours, minutes_rem).to_string()
+                format!("{:02}h {:02}m", hours, minutes_rem)
             }
         }
         DurationFormat::HoursMinutesSeconds => {
@@ -161,9 +131,37 @@ pub fn format_duration(duration: chrono::Duration, duration_format: DurationForm
                 let seconds_rem = seconds.checked_rem(60).unwrap();
                 let minutes_rem = (seconds / 60).checked_rem(60).unwrap();
                 let hours_rem = seconds / (60 * 60);
-                format!("{:02}h {:02}m {:02}s", hours_rem, minutes_rem, seconds_rem).to_string()
+                format!("{:02}h {:02}m {:02}s", hours_rem, minutes_rem, seconds_rem)
             }
         }
+    }
+}
+
+pub fn format_time_no_seconds<Tz: TimeZone>(
+    datetime: chrono::DateTime<Tz>,
+    datetime_format: DateTimeFormat,
+) -> String
+where
+    Tz::Offset: std::fmt::Display,
+{
+    match datetime_format {
+        DateTimeFormat::Iso => datetime.format("%H:%M").to_string(),
+        DateTimeFormat::UsaMonthDayYear => datetime.format("%I:%M %p").to_string(),
+        DateTimeFormat::Locale => datetime.format("%X").to_string(),
+    }
+}
+
+pub fn format_time<Tz: TimeZone>(
+    datetime: chrono::DateTime<Tz>,
+    datetime_format: DateTimeFormat,
+) -> String
+where
+    Tz::Offset: std::fmt::Display,
+{
+    match datetime_format {
+        DateTimeFormat::Iso => datetime.format("%H:%M:%S").to_string(),
+        DateTimeFormat::UsaMonthDayYear => datetime.format("%I:%M:%S %p").to_string(),
+        DateTimeFormat::Locale => datetime.format("%X").to_string(),
     }
 }
 
@@ -192,6 +190,72 @@ where
         DateTimeFormat::Iso => datetime.format("%Y-%m-%d %H:%M:%S").to_string(),
         DateTimeFormat::UsaMonthDayYear => datetime.format("%m/%d/%Y %I:%M:%S %p").to_string(),
         DateTimeFormat::Locale => datetime.format("%x %X").to_string(),
+    }
+}
+
+#[derive(Debug, Copy, Clone, ValueEnum, Serialize, Deserialize)]
+pub enum TimeBlockUnit {
+    FiveMinutes,
+    TenMinutes,
+    FifteenMinutes,
+    ThirtyMinutes,
+    SixtyMinutes,
+}
+
+impl TimeBlockUnit {
+    pub fn as_minutes(self) -> u64 {
+        match self {
+            TimeBlockUnit::FiveMinutes => 5,
+            TimeBlockUnit::TenMinutes => 10,
+            TimeBlockUnit::FifteenMinutes => 15,
+            TimeBlockUnit::ThirtyMinutes => 30,
+            TimeBlockUnit::SixtyMinutes => 60,
+        }
+    }
+}
+
+impl fmt::Display for TimeBlockUnit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            TimeBlockUnit::FiveMinutes => write!(f, "FiveMinutes"),
+            TimeBlockUnit::TenMinutes => write!(f, "TenMinutes"),
+            TimeBlockUnit::FifteenMinutes => write!(f, "FifteenMinutes"),
+            TimeBlockUnit::ThirtyMinutes => write!(f, "ThirtyMinutes"),
+            TimeBlockUnit::SixtyMinutes => write!(f, "SixtyMinutes"),
+        }
+    }
+}
+
+impl From<TimeBlockUnit> for ValueKind {
+    fn from(value: TimeBlockUnit) -> Self {
+        ValueKind::String(format!("{}", value))
+    }
+}
+
+#[derive(Debug, Copy, Clone, ValueEnum, Serialize, Deserialize)]
+pub enum PrintType {
+    Summary,
+    Activity,
+    Variables,
+    Software,
+}
+
+impl fmt::Display for PrintType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            PrintType::Summary => write!(f, "Summary"),
+            PrintType::Activity => {
+                write!(f, "Activity")
+            }
+            PrintType::Variables => write!(f, "Variables"),
+            PrintType::Software => write!(f, "Software"),
+        }
+    }
+}
+
+impl From<PrintType> for ValueKind {
+    fn from(value: PrintType) -> Self {
+        ValueKind::String(format!("{}", value).to_string())
     }
 }
 

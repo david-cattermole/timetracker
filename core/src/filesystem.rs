@@ -3,11 +3,11 @@ use log::{debug, error};
 use shellexpand;
 use std::path::PathBuf;
 
-/// Search for an existing file in the home directory and user
-/// directory override.
+/// Search for an existing file in the home directory, config
+/// directory and user directory override.
 pub fn find_existing_file_path(user_dir_path: Option<String>, file_name: &str) -> Option<PathBuf> {
     if let Some(value) = user_dir_path {
-        let value = shellexpand::full(&value).unwrap().into_owned();
+        let value = shellexpand::full(&value).ok()?.into_owned();
         let mut path = PathBuf::new();
         path.push(value);
         path.push(file_name);
@@ -16,6 +16,17 @@ pub fn find_existing_file_path(user_dir_path: Option<String>, file_name: &str) -
         }
     }
 
+    // $XDG_CONFIG_HOME or $HOME/.config (on Linux)
+    if let Some(value) = dirs::config_dir() {
+        let mut path = PathBuf::new();
+        path.push(value);
+        path.push(file_name);
+        if path.is_file() {
+            return Some(path);
+        }
+    }
+
+    // $HOME (on Linux)
     if let Some(value) = dirs::home_dir() {
         let mut path = PathBuf::new();
         path.push(value);
@@ -30,7 +41,7 @@ pub fn find_existing_file_path(user_dir_path: Option<String>, file_name: &str) -
 
 pub fn construct_file_path(user_dir_path: &Option<String>, file_name: &str) -> Option<PathBuf> {
     if let Some(value) = user_dir_path {
-        let value = shellexpand::full(&value).unwrap().into_owned();
+        let value = shellexpand::full(&value).ok()?.into_owned();
         let mut path = PathBuf::new();
         path.push(value);
         path.push(file_name);
@@ -45,7 +56,7 @@ pub fn get_database_file_path(
     database_file_name: &String,
 ) -> Option<PathBuf> {
     let database_file_path =
-        construct_file_path(&Some(database_dir.to_string()), &database_file_name);
+        construct_file_path(&Some(database_dir.to_string()), database_file_name);
     match database_file_path {
         Some(ref value) => {
             debug!("Database File Path: {:?}", value);

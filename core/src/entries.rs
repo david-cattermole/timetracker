@@ -1,5 +1,3 @@
-
-
 use log::debug;
 use std::collections::HashMap;
 
@@ -91,10 +89,10 @@ impl EntryVariablesList {
     }
 
     pub fn replace_with_environ_vars(&mut self, environ_vars: &HashMap<String, String>) {
-        set_variable_from_environ_vars(&self.var1_name, &mut self.var1_value, &environ_vars);
-        set_variable_from_environ_vars(&self.var2_name, &mut self.var2_value, &environ_vars);
-        set_variable_from_environ_vars(&self.var3_name, &mut self.var3_value, &environ_vars);
-        set_variable_from_environ_vars(&self.var4_name, &mut self.var4_value, &environ_vars);
+        set_variable_from_environ_vars(&self.var1_name, &mut self.var1_value, environ_vars);
+        set_variable_from_environ_vars(&self.var2_name, &mut self.var2_value, environ_vars);
+        set_variable_from_environ_vars(&self.var3_name, &mut self.var3_value, environ_vars);
+        set_variable_from_environ_vars(&self.var4_name, &mut self.var4_value, environ_vars);
     }
 }
 
@@ -123,8 +121,8 @@ impl Entry {
 
     pub fn empty() -> Entry {
         Entry {
-            utc_time_seconds: 0 as u64,
-            duration_seconds: 0 as u64,
+            utc_time_seconds: 0_u64,
+            duration_seconds: 0_u64,
             status: EntryStatus::Uninitialized,
             vars: EntryVariablesList::empty(),
         }

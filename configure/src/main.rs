@@ -18,7 +18,7 @@ fn main() -> Result<()> {
     let args = CommandArguments::parse();
 
     let settings = ConfigureAppSettings::new(&args);
-    if !settings.is_ok() {
+    if settings.is_err() {
         bail!("Settings are invalid: {:?}", settings);
     }
     let settings = settings.unwrap();
@@ -28,7 +28,7 @@ fn main() -> Result<()> {
         let now = SystemTime::now();
 
         let full_settings = FullConfigurationSettings::new(args.load_user_overrides);
-        if !full_settings.is_ok() {
+        if full_settings.is_err() {
             bail!("Configuration structure is invalid: {:?}", full_settings);
         }
         let full_settings = full_settings.unwrap();

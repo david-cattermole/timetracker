@@ -1,8 +1,9 @@
 use crate::filesystem::find_existing_file_path;
 use crate::format::DateTimeFormat;
 use crate::format::DurationFormat;
-use crate::format::FirstDayOfWeek;
-use crate::format::TimeDuration;
+use crate::format::PrintType;
+use crate::format::TimeBlockUnit;
+use crate::format::TimeScale;
 use config::{
     builder::DefaultState, Config, ConfigBuilder, ConfigError, Environment, File, FileFormat,
     Value, ValueKind,
@@ -38,15 +39,12 @@ pub const CONFIG_FILE_NAME: &str = ".timetracker.toml";
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EnvVarSettings {
     pub names: Vec<String>,
-    pub labels: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CoreSettings {
     pub database_dir: String,
     pub database_file_name: String,
-    pub record_interval_seconds: u64,
-    pub user_is_idle_limit_seconds: u64,
     pub environment_variables: EnvVarSettings,
 }
 
@@ -55,21 +53,12 @@ pub fn new_core_settings(
     database_file_name: Option<String>,
     load_user_overrides: bool,
 ) -> Result<ConfigBuilder<DefaultState>, ConfigError> {
-    let mut env_var_names = Vec::new();
-    env_var_names.push("PWD".to_string());
-
-    let env_var_labels = HashMap::<String, String>::new();
+    let env_var_names = vec!["PWD".to_string(); 1];
 
     let mut builder = Config::builder()
-        .set_default("core.record_interval_seconds", RECORD_INTERVAL_SECONDS)?
-        .set_default(
-            "core.user_is_idle_limit_seconds",
-            USER_IS_IDLE_LIMIT_SECONDS,
-        )?
         .set_default("core.database_dir", DATABASE_DIR)?
         .set_default("core.database_file_name", DATABASE_FILE_NAME)?
         .set_default("core.environment_variables.names", env_var_names)?
-        .set_default("core.environment_variables.labels", env_var_labels)?
         //
         // Allows settings from environment variables (with a prefix
         // of TIMETRACKER) eg `TIMETRACKER_CORE_DATABASE_DIR=1 ./target/app` to
@@ -100,39 +89,35 @@ pub fn new_core_settings(
     Result::Ok(builder)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrintPresetSettings {
-    // TODO: Do we need to control printing the summary times? Or can
-    // we just assume we always want to print them?
-    //
-    // TODO: Pick better names than 'filter_*'.
-    pub filter_executable: bool,
-    pub filter_env_vars: Vec<String>,
-    // TODO: Add an option to display when a user is active during a
-    // day/week. How can we best display that information in a
-    // text-based print out?
-    pub time_duration: Option<TimeDuration>,
+    pub print_type: Option<PrintType>,
+    pub time_scale: Option<TimeScale>,
     pub format_datetime: Option<DateTimeFormat>,
     pub format_duration: Option<DurationFormat>,
-    pub first_day_of_week: Option<FirstDayOfWeek>,
+    pub time_block_unit: Option<TimeBlockUnit>,
+    pub bar_graph_character_num_width: Option<u8>,
+    pub variable_names: Option<Vec<String>>,
 }
 
 impl PrintPresetSettings {
-    fn new(
-        filter_executable: bool,
-        filter_env_vars: Vec<String>,
-        time_duration: Option<TimeDuration>,
+    pub fn new(
+        print_type: Option<PrintType>,
+        time_scale: Option<TimeScale>,
         format_datetime: Option<DateTimeFormat>,
         format_duration: Option<DurationFormat>,
-        first_day_of_week: Option<FirstDayOfWeek>,
+        time_block_unit: Option<TimeBlockUnit>,
+        bar_graph_character_num_width: Option<u8>,
+        variable_names: Option<Vec<String>>,
     ) -> Self {
         Self {
-            filter_executable,
-            filter_env_vars,
-            time_duration,
+            print_type,
+            time_scale,
             format_datetime,
             format_duration,
-            first_day_of_week,
+            time_block_unit,
+            bar_graph_character_num_width,
+            variable_names,
         }
     }
 }
@@ -140,39 +125,27 @@ impl PrintPresetSettings {
 impl From<PrintPresetSettings> for ValueKind {
     fn from(preset: PrintPresetSettings) -> Self {
         let mut map = HashMap::<std::string::String, Value>::new();
-        map.insert(
-            "filter_executable".to_string(),
-            Value::new(
-                Some(&"filter_executable".to_string()),
-                ValueKind::Boolean(preset.filter_executable),
-            ),
-        );
 
-        let envvars_array: Vec<_> = preset
-            .filter_env_vars
-            .iter()
-            .map(|x| Value::new(None, ValueKind::String(x.clone())))
-            .collect();
-        map.insert(
-            "filter_env_vars".to_string(),
-            Value::new(
-                Some(&"filter_env_vars".to_string()),
-                ValueKind::Array(envvars_array),
-            ),
-        );
-
-        match preset.time_duration {
+        match preset.print_type {
             Some(value) => map.insert(
-                "time_duration".to_string(),
+                "print_type".to_string(),
                 Value::new(
-                    Some(&"time_duration".to_string()),
+                    Some(&"print_type".to_string()),
                     ValueKind::String(value.to_string()),
                 ),
             ),
-            None => map.insert(
-                "time_duration".to_string(),
-                Value::new(None, ValueKind::Nil),
+            None => map.insert("print_type".to_string(), Value::new(None, ValueKind::Nil)),
+        };
+
+        match preset.time_scale {
+            Some(value) => map.insert(
+                "time_scale".to_string(),
+                Value::new(
+                    Some(&"time_scale".to_string()),
+                    ValueKind::String(value.to_string()),
+                ),
             ),
+            None => map.insert("time_scale".to_string(), Value::new(None, ValueKind::Nil)),
         };
 
         match preset.format_datetime {
@@ -203,16 +176,50 @@ impl From<PrintPresetSettings> for ValueKind {
             ),
         };
 
-        match preset.first_day_of_week {
+        match preset.time_block_unit {
             Some(value) => map.insert(
-                "first_day_of_week".to_string(),
+                "time_block_unit".to_string(),
                 Value::new(
-                    Some(&"first_day_of_week".to_string()),
+                    Some(&"time_block_unit".to_string()),
                     ValueKind::String(value.to_string()),
                 ),
             ),
             None => map.insert(
-                "first_day_of_week".to_string(),
+                "time_block_unit".to_string(),
+                Value::new(None, ValueKind::Nil),
+            ),
+        };
+
+        match preset.bar_graph_character_num_width {
+            Some(value) => map.insert(
+                "bar_graph_character_num_width".to_string(),
+                Value::new(
+                    Some(&"bar_graph_character_num_width".to_string()),
+                    ValueKind::U64(value as u64),
+                ),
+            ),
+            None => map.insert(
+                "bar_graph_character_num_width".to_string(),
+                Value::new(None, ValueKind::Nil),
+            ),
+        };
+
+        match preset.variable_names {
+            Some(value) => {
+                let envvars_array: Vec<_> = value
+                    .iter()
+                    .map(|x| Value::new(None, ValueKind::String(x.clone())))
+                    .collect();
+                map.insert(
+                    "variable_names".to_string(),
+                    Value::new(
+                        Some(&"variable_names".to_string()),
+                        ValueKind::Array(envvars_array),
+                    ),
+                )
+            }
+            None => map.insert(
+                "variable_names".to_string(),
                 Value::new(None, ValueKind::Nil),
             ),
         };
@@ -223,16 +230,11 @@ impl From<PrintPresetSettings> for ValueKind {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PrintSettings {
-    pub relative_week: i32,
-    pub time_duration: TimeDuration,
+    pub time_scale: TimeScale,
     pub format_datetime: DateTimeFormat,
     pub format_duration: DurationFormat,
-    pub first_day_of_week: FirstDayOfWeek,
-    pub display_week: bool,
-    pub display_weekday: bool,
-    pub display_week_task: bool,
-    pub display_weekday_task: bool,
-    pub display_week_software: bool,
+    pub time_block_unit: TimeBlockUnit,
+    pub bar_graph_character_num_width: u8,
     pub display_presets: Vec<String>,
     pub presets: HashMap<String, PrintPresetSettings>,
 }
@@ -240,13 +242,16 @@ pub struct PrintSettings {
 pub fn new_print_settings(
     config_builder: ConfigBuilder<DefaultState>,
 ) -> Result<ConfigBuilder<DefaultState>, ConfigError> {
-    let mut preset_names = Vec::<String>::new();
-    preset_names.push("summary_week".to_string());
-    preset_names.push("summary_weekdays".to_string());
-    preset_names.push("executable_week".to_string());
-    preset_names.push("executable_weekdays".to_string());
-    preset_names.push("working_directory_week".to_string());
-    preset_names.push("working_directory_weekdays".to_string());
+    let preset_names = vec![
+        "summary_week".to_string(),
+        "summary_weekdays".to_string(),
+        "activity_week".to_string(),
+        "activity_weekdays".to_string(),
+        "working_directory_week".to_string(),
+        "working_directory_weekdays".to_string(),
+        "software_week".to_string(),
+        "software_weekdays".to_string(),
+    ];
 
     // Default presets that will always be available to users, unless
     // they override the names.
@@ -254,9 +259,10 @@ pub fn new_print_settings(
     presets.insert(
         "summary_week".to_string(),
         PrintPresetSettings::new(
-            false,
-            Vec::new(),
-            Some(TimeDuration::FullWeek),
+            Some(PrintType::Summary),
+            Some(TimeScale::Week),
+            None,
+            None,
             None,
             None,
             None,
@@ -265,21 +271,10 @@ pub fn new_print_settings(
     presets.insert(
         "summary_weekdays".to_string(),
         PrintPresetSettings::new(
-            false,
-            Vec::new(),
-            Some(TimeDuration::FullWeekPerDay),
+            Some(PrintType::Summary),
+            Some(TimeScale::Weekday),
             None,
             None,
-            None,
-        ),
-    );
-
-    presets.insert(
-        "executable_week".to_string(),
-        PrintPresetSettings::new(
-            true,
-            Vec::new(),
-            Some(TimeDuration::FullWeek),
             None,
             None,
             None,
@@ -287,11 +282,25 @@ pub fn new_print_settings(
     );
 
     presets.insert(
-        "executable_weekdays".to_string(),
+        "activity_week".to_string(),
         PrintPresetSettings::new(
-            true,
-            Vec::new(),
-            Some(TimeDuration::FullWeekPerDay),
+            Some(PrintType::Activity),
+            Some(TimeScale::Week),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ),
+    );
+
+    presets.insert(
+        "activity_weekdays".to_string(),
+        PrintPresetSettings::new(
+            Some(PrintType::Activity),
+            Some(TimeScale::Weekday),
+            None,
+            None,
             None,
             None,
             None,
@@ -301,20 +310,48 @@ pub fn new_print_settings(
     presets.insert(
         "working_directory_week".to_string(),
         PrintPresetSettings::new(
-            false,
-            vec!["PWD".to_string()],
-            Some(TimeDuration::FullWeek),
+            Some(PrintType::Variables),
+            Some(TimeScale::Week),
             None,
             None,
             None,
+            None,
+            Some(vec!["PWD".to_string()]),
         ),
     );
     presets.insert(
         "working_directory_weekdays".to_string(),
         PrintPresetSettings::new(
-            false,
-            vec!["PWD".to_string()],
-            Some(TimeDuration::FullWeekPerDay),
+            Some(PrintType::Variables),
+            Some(TimeScale::Weekday),
+            None,
+            None,
+            None,
+            None,
+            Some(vec!["PWD".to_string()]),
+        ),
+    );
+
+    presets.insert(
+        "software_week".to_string(),
+        PrintPresetSettings::new(
+            Some(PrintType::Software),
+            Some(TimeScale::Week),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ),
+    );
+
+    presets.insert(
+        "software_weekdays".to_string(),
+        PrintPresetSettings::new(
+            Some(PrintType::Software),
+            Some(TimeScale::Weekday),
+            None,
+            None,
             None,
             None,
             None,
@@ -322,16 +359,11 @@ pub fn new_print_settings(
     );
 
     let config_builder = config_builder
-        .set_default("print.relative_week", 0)?
-        .set_default("print.time_duration", "FullWeek")?
+        .set_default("print.time_scale", "Week")?
         .set_default("print.format_datetime", "Locale")?
         .set_default("print.format_duration", "HoursMinutes")?
-        .set_default("print.first_day_of_week", "Monday")?
-        .set_default("print.display_week", true)?
-        .set_default("print.display_weekday", true)?
-        .set_default("print.display_week_task", true)?
-        .set_default("print.display_weekday_task", false)?
-        .set_default("print.display_week_software", false)?
+        .set_default("print.time_block_unit", "SixtyMinutes")?
+        .set_default("print.bar_graph_character_num_width", 60)?
         .set_default("print.display_presets", preset_names)?
         .set_default("print.presets", presets)?;
     Result::Ok(config_builder)

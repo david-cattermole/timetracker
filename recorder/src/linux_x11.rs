@@ -1,3 +1,4 @@
+use anyhow::Result;
 use log::{debug, warn};
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -7,7 +8,6 @@ use std::os::raw::c_uchar;
 use std::os::raw::c_uint;
 use std::os::raw::c_ulong;
 use std::os::raw::c_void;
-use x11;
 
 pub type ProcessID = c_uint;
 
@@ -53,7 +53,7 @@ fn get_top_window_id(display_ptr: *mut x11::xlib::Display, start_window_id: c_ul
     let mut window_id = start_window_id;
     let mut parent_window_id = start_window_id;
     let mut root_window_id = 0 as c_ulong;
-    let mut child_window_ids = 0 as *mut c_ulong;
+    let mut child_window_ids = std::ptr::null_mut::<c_ulong>();
     let mut child_count = 0 as c_uint;
 
     while parent_window_id != root_window_id {
@@ -96,14 +96,14 @@ fn list_window_properties(display_ptr: *mut x11::xlib::Display, window_id: c_ulo
     num_prop_return
 }
 
-fn get_process_id_property_id(display_ptr: *mut x11::xlib::Display) -> x11::xlib::Atom {
+fn get_process_id_property_id(display_ptr: *mut x11::xlib::Display) -> Result<x11::xlib::Atom> {
     // https://tronche.com/gui/x/xlib/window-information/XInternAtom.html
-    let atom_name = CStr::from_bytes_with_nul(b"_NET_WM_PID\0").unwrap();
+    let atom_name = CStr::from_bytes_with_nul(b"_NET_WM_PID\0")?;
     let atom_name_ptr = atom_name.as_ptr();
     let only_if_exists = 1 as c_int;
     let property_id: x11::xlib::Atom =
         unsafe { x11::xlib::XInternAtom(display_ptr, atom_name_ptr, only_if_exists) };
-    property_id
+    Ok(property_id)
 }
 
 fn get_process_id_from_window_id(
@@ -158,7 +158,7 @@ fn get_process_id_from_window_tree(
 ) -> ProcessID {
     let mut parent_window_id = start_window_id;
     let mut root_window_id = 0 as c_ulong;
-    let mut child_window_ids = 0 as *mut c_ulong;
+    let mut child_window_ids = std::ptr::null_mut::<c_ulong>();
     let mut child_count = 0 as c_uint;
     let mut process_id = 0;
 
@@ -211,21 +211,19 @@ fn get_process_id_from_window_tree(
     process_id
 }
 
-pub fn get_active_window_process_id_from_x11() -> ProcessID {
-    let process_id;
-
+pub fn get_active_window_process_id_from_x11() -> Result<ProcessID> {
     // Get X11 Display.
     let display_num = 0 as c_char;
     let display_ptr = unsafe { x11::xlib::XOpenDisplay(&display_num) };
 
     let window_id = get_window_id_with_focus(display_ptr);
-    let property_id = get_process_id_property_id(display_ptr);
-    process_id = get_process_id_from_window_tree(display_ptr, window_id, property_id);
+    let property_id = get_process_id_property_id(display_ptr)?;
+    let process_id = get_process_id_from_window_tree(display_ptr, window_id, property_id);
 
     // Close the X11 display.
     unsafe { x11::xlib::XCloseDisplay(display_ptr) };
 
-    process_id
+    Ok(process_id)
 }
 
 pub fn get_user_idle_time_from_x11() -> c_ulong {

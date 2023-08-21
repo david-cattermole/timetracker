@@ -49,8 +49,7 @@ fn get_last_database_entry(connection: &sqlite::Connection) -> Result<Entry> {
         |pairs| {
             for &(column, value) in pairs.iter() {
                 debug!("{} = {:?}", column, value);
-                match value {
-                    Some(v) => match column {
+                if let Some(v) = value { match column {
                         "utc_time_seconds" => {
                             last_entry.utc_time_seconds = v.parse::<u64>().unwrap();
                         }
@@ -89,9 +88,8 @@ fn get_last_database_entry(connection: &sqlite::Connection) -> Result<Entry> {
                             last_entry.vars.var4_value = Some(v.to_owned())
                         }
                         _ => todo!(),
-                    },
-                    _ => (),
-                }
+                };
+                };
             }
             true // Only one record will be returned anyway.
         },
@@ -133,45 +131,21 @@ fn update_existing_entry_rows_into_database(
 
         let executable = match &entry.vars.executable {
             Some(value) => {
-                let executable_name = format_short_executable_name(&value);
+                let executable_name = format_short_executable_name(value);
                 sqlite::Value::String(executable_name.to_string())
             }
             None => sqlite::Value::Null,
         };
 
-        let var1_name = match &entry.vars.var1_name {
-            Some(value) => sqlite::Value::String(value.to_string()),
-            None => sqlite::Value::Null,
-        };
-        let var2_name = match &entry.vars.var2_name {
-            Some(value) => sqlite::Value::String(value.to_string()),
-            None => sqlite::Value::Null,
-        };
-        let var3_name = match &entry.vars.var3_name {
-            Some(value) => sqlite::Value::String(value.to_string()),
-            None => sqlite::Value::Null,
-        };
-        let var4_name = match &entry.vars.var4_name {
-            Some(value) => sqlite::Value::String(value.to_string()),
-            None => sqlite::Value::Null,
-        };
+        let var1_name = convert_entry_var_to_sql_string_value(&entry.vars.var1_name);
+        let var2_name = convert_entry_var_to_sql_string_value(&entry.vars.var2_name);
+        let var3_name = convert_entry_var_to_sql_string_value(&entry.vars.var3_name);
+        let var4_name = convert_entry_var_to_sql_string_value(&entry.vars.var4_name);
 
-        let var1_value = match &entry.vars.var1_value {
-            Some(value) => sqlite::Value::String(value.to_string()),
-            None => sqlite::Value::Null,
-        };
-        let var2_value = match &entry.vars.var2_value {
-            Some(value) => sqlite::Value::String(value.to_string()),
-            None => sqlite::Value::Null,
-        };
-        let var3_value = match &entry.vars.var3_value {
-            Some(value) => sqlite::Value::String(value.to_string()),
-            None => sqlite::Value::Null,
-        };
-        let var4_value = match &entry.vars.var4_value {
-            Some(value) => sqlite::Value::String(value.to_string()),
-            None => sqlite::Value::Null,
-        };
+        let var1_value = convert_entry_var_to_sql_string_value(&entry.vars.var1_value);
+        let var2_value = convert_entry_var_to_sql_string_value(&entry.vars.var2_value);
+        let var3_value = convert_entry_var_to_sql_string_value(&entry.vars.var3_value);
+        let var4_value = convert_entry_var_to_sql_string_value(&entry.vars.var4_value);
 
         debug!(
             "UPDATE Entry [ Time: {}, Duration: {}, Status: {:?}, Executable: {:?}, Var1: {:?} = {:?}, Var2: {:?} = {:?}, Var3: {:?} = {:?}, Var4: {:?} = {:?} ]",
@@ -209,6 +183,14 @@ fn convert_entry_var_to_sql_string_value(entry_var_name: &Option<String>) -> sql
     match &entry_var_name {
         Some(value) => sqlite::Value::String(value.to_string()),
         None => sqlite::Value::Null,
+    }
+}
+
+fn convert_sql_string_or_null_to_entry_var_value(sql_value: &sqlite::Value) -> Option<String> {
+    match sql_value {
+        sqlite::Value::String(value) => Some(value.clone()),
+        sqlite::Value::Null => None,
+        _ => panic!("SQLite value can only be an String or Null type."),
     }
 }
 
@@ -275,7 +257,7 @@ fn insert_new_entry_rows_into_database(
 
         let executable = match &entry.vars.executable {
             Some(value) => {
-                let executable_name = format_short_executable_name(&value);
+                let executable_name = format_short_executable_name(value);
                 sqlite::Value::String(executable_name.to_string())
             }
             None => sqlite::Value::Null,
@@ -343,7 +325,7 @@ impl Storage {
         debug!("Storage file: {:?}", database_file_path);
         let file_exists = database_file_path.is_file();
 
-        if auto_create_database_file == false && file_exists == false {
+        if !auto_create_database_file && !file_exists {
             return Err(anyhow!(
                 "Database storage file does not exist: {}",
                 database_file_path.display()
@@ -354,7 +336,7 @@ impl Storage {
             .set_create()
             .set_read_write()
             .set_full_mutex();
-        let connection = sqlite::Connection::open_with_flags(&database_file_path, db_open_flags)?;
+        let connection = sqlite::Connection::open_with_flags(database_file_path, db_open_flags)?;
 
         if !file_exists {
             initialize_database(&connection)?;
@@ -423,10 +405,26 @@ impl Storage {
         start_utc_time_seconds: u64,
         end_utc_time_seconds: u64,
     ) -> Result<Vec<Entry>> {
+        const INDEX_UTC_TIME_SECONDS: usize = 0;
+        const INDEX_DURATION_SECONDS: usize = 1;
+        const INDEX_STATUS: usize = 2;
+        const INDEX_EXECUTABLE: usize = 3;
+        const INDEX_VAR1_NAME: usize = 4;
+        const INDEX_VAR2_NAME: usize = 5;
+        const INDEX_VAR3_NAME: usize = 6;
+        const INDEX_VAR4_NAME: usize = 7;
+        const INDEX_VAR1_VALUE: usize = 8;
+        const INDEX_VAR2_VALUE: usize = 9;
+        const INDEX_VAR3_VALUE: usize = 10;
+        const INDEX_VAR4_VALUE: usize = 11;
+
         let mut cursor = self
             .connection
             .prepare(
-                "SELECT *
+                "SELECT utc_time_seconds, duration_seconds, status,
+                        executable,
+                        var1_name, var2_name, var3_name, var4_name,
+                        var1_value, var2_value, var3_value, var4_value
                  FROM records
                  WHERE utc_time_seconds > :start_utc_time_seconds
                        AND utc_time_seconds < :end_utc_time_seconds
@@ -446,20 +444,35 @@ impl Storage {
 
         let mut entries = Vec::<Entry>::new();
         while let Some(row) = cursor.next()? {
-            debug!("row = {:?}", row);
-            let utc_time_seconds = row[0].as_integer().unwrap();
-            let duration_seconds = row[1].as_integer().unwrap();
-            let status_num = row[2].as_integer().unwrap();
-            let status: EntryStatus = FromPrimitive::from_u64(status_num.try_into()?).unwrap();
+            // debug!("row = {:?}", row);
+            let utc_time_seconds = row[INDEX_UTC_TIME_SECONDS].as_integer().unwrap();
+            let duration_seconds = row[INDEX_DURATION_SECONDS].as_integer().unwrap();
+            let status_num = row[INDEX_STATUS].as_integer().unwrap();
+            let status: EntryStatus =
+                FromPrimitive::from_u64(status_num.try_into().unwrap()).unwrap();
 
-            let executable: Option<String> = match &row[4] {
-                sqlite::Value::String(value) => Some(value.clone()),
-                sqlite::Value::Null => None,
-                _ => panic!("executable should only be an String or Null type."),
-            };
+            let executable = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_EXECUTABLE]);
+
+            let var1_name = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_VAR1_NAME]);
+            let var2_name = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_VAR2_NAME]);
+            let var3_name = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_VAR3_NAME]);
+            let var4_name = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_VAR4_NAME]);
+
+            let var1_value = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_VAR1_VALUE]);
+            let var2_value = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_VAR2_VALUE]);
+            let var3_value = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_VAR3_VALUE]);
+            let var4_value = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_VAR4_VALUE]);
 
             let mut vars = EntryVariablesList::empty();
-            vars.executable = executable; // Some("bash".to_string());
+            vars.executable = executable;
+            vars.var1_name = var1_name;
+            vars.var2_name = var2_name;
+            vars.var3_name = var3_name;
+            vars.var4_name = var4_name;
+            vars.var1_value = var1_value;
+            vars.var2_value = var2_value;
+            vars.var3_value = var3_value;
+            vars.var4_value = var4_value;
 
             let entry = Entry::new(
                 utc_time_seconds.try_into()?,
@@ -513,6 +526,6 @@ impl Storage {
 
     pub fn close(&mut self) {
         // close the SQLite database connection.
-        debug!("Closed Time Tracker Storage (currently does nothing).");
+        debug!("Closed Time Tracker Storage.");
     }
 }

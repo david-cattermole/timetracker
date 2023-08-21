@@ -15,12 +15,10 @@ pub fn strip_executable_name(name: &str) -> &str {
 
     // Strips off end of string, at first space character:
     // "/path/to/exe/exe_file --flag /path/to/file_path.jpg" to "/path/to/exe/file"
-    let strip_end = match name.find(' ') {
+    match name.find(' ') {
         Some(end_index) => &name[..end_index],
         None => name,
-    };
-
-    strip_end
+    }
 }
 
 pub fn format_short_executable_name(name: &str) -> &str {
@@ -29,14 +27,12 @@ pub fn format_short_executable_name(name: &str) -> &str {
 
     // Strips off end of string, at first space character:
     // "/path/to/exe/exe_file --flag /path/to/file_path.jpg" to "/path/to/exe/file"
-    let strip_end = strip_executable_name(&name);
+    let strip_end = strip_executable_name(name);
 
     // Strips off start of string, at last forward-slash character:
     // "/path/to/exe/exe_file" to "exe_file"
-    let strip_start_and_end = match strip_end.rfind('/') {
+    match strip_end.rfind('/') {
         Some(start_index) => &strip_end[start_index + 1..],
-        None => &strip_end,
-    };
-
-    strip_start_and_end
+        None => strip_end,
+    }
 }
