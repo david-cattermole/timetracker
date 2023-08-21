@@ -1,8 +1,6 @@
 use clap::Parser;
-use clap::ValueEnum;
-use config::{ConfigError, ValueKind};
+use config::ConfigError;
 use serde_derive::Deserialize;
-use std::fmt;
 use timetracker_core::format::DateTimeFormat;
 use timetracker_core::format::DurationFormat;
 use timetracker_core::settings::new_core_settings;
@@ -10,34 +8,9 @@ use timetracker_core::settings::new_print_settings;
 use timetracker_core::settings::CoreSettings;
 use timetracker_core::settings::PrintSettings;
 
-#[derive(Debug, Copy, Clone, ValueEnum)]
-pub enum CommandMode {
-    Print,
-    List,
-}
-
-impl fmt::Display for CommandMode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            CommandMode::Print => write!(f, "print"),
-            CommandMode::List => write!(f, "list"),
-        }
-    }
-}
-
-impl From<CommandMode> for ValueKind {
-    fn from(value: CommandMode) -> Self {
-        ValueKind::String(format!("{}", value))
-    }
-}
-
 #[derive(Parser, Debug)]
 #[clap(author = "David Cattermole, Copyright 2023", version, about)]
 pub struct CommandArguments {
-    /// What mode should this command run in?
-    #[clap(short = 'm', long, value_parser, default_value_t = CommandMode::Print)]
-    pub mode: CommandMode,
-
     /// Relative week number. '0' is the current week, '-1' is the
     /// previous week, etc.
     #[clap(short = 'w', long, value_parser, default_value_t = 0)]
@@ -46,6 +19,10 @@ pub struct CommandArguments {
     /// Which presets to print with?
     #[clap(short = 'p', long, value_parser)]
     pub presets: Option<Vec<String>>,
+
+    /// List all available preset names.
+    #[clap(long, value_parser, default_value_t = false)]
+    pub list_presets: bool,
 
     /// How should dates/times be displayed?
     #[clap(long, value_enum)]
@@ -84,7 +61,6 @@ impl PrintAppSettings {
         // values. These will always override any configuration file
         // or environment variable.
         builder = builder
-            .set_override("print.relative_week", arguments.relative_week)?
             .set_override_option("print.display_presets", arguments.presets.clone())?
             .set_override_option("print.format_datetime", arguments.format_datetime)?
             .set_override_option("print.format_duration", arguments.format_duration)?;

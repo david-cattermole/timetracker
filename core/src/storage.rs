@@ -9,16 +9,31 @@ use chrono;
 use log::debug;
 use num_traits::FromPrimitive;
 use num_traits::ToPrimitive;
-use sqlite;
+use rusqlite;
+use rusqlite::named_params;
 use std::fs::File;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
-fn initialize_database(connection: &sqlite::Connection) -> Result<()> {
+// The indexes of the fields in the database, used to index into
+// queried rows.
+const INDEX_UTC_TIME_SECONDS: usize = 0;
+const INDEX_DURATION_SECONDS: usize = 1;
+const INDEX_STATUS: usize = 2;
+const INDEX_EXECUTABLE: usize = 3;
+const INDEX_VAR1_NAME: usize = 4;
+const INDEX_VAR2_NAME: usize = 5;
+const INDEX_VAR3_NAME: usize = 6;
+const INDEX_VAR4_NAME: usize = 7;
+const INDEX_VAR1_VALUE: usize = 8;
+const INDEX_VAR2_VALUE: usize = 9;
+const INDEX_VAR3_VALUE: usize = 10;
+const INDEX_VAR4_VALUE: usize = 11;
+
+fn initialize_database(connection: &rusqlite::Connection) -> Result<()> {
+    debug!("Initialize Database...");
+
     // Create database tables to be used for storage.
-    //
-    // https://www.sqlite.org/foreignkeys.html
-    //
     connection.execute(
         "CREATE TABLE records (
               utc_time_seconds INTEGER,
@@ -34,82 +49,51 @@ fn initialize_database(connection: &sqlite::Connection) -> Result<()> {
               var3_value       TEXT,
               var4_value       TEXT
          );",
+        (), // no parameters needed to create a table.
     )?;
 
     Ok(())
 }
 
-fn get_last_database_entry(connection: &sqlite::Connection) -> Result<Entry> {
-    let mut last_entry = Entry::empty();
-    connection.iterate(
+fn get_last_database_entry(connection: &rusqlite::Connection) -> Result<Entry> {
+    let mut statement = connection.prepare(
         "SELECT utc_time_seconds, duration_seconds, status, executable, var1_name, var2_name, var3_name, var4_name, var1_value, var2_value, var3_value, var4_value
          FROM records
          ORDER BY utc_time_seconds DESC
-         LIMIT 1 ;",
-        |pairs| {
-            for &(column, value) in pairs.iter() {
-                debug!("{} = {:?}", column, value);
-                if let Some(v) = value { match column {
-                        "utc_time_seconds" => {
-                            last_entry.utc_time_seconds = v.parse::<u64>().unwrap();
-                        }
-                        "duration_seconds" => {
-                            last_entry.duration_seconds = v.parse::<u64>().unwrap();
-                        }
-                        "status" => {
-                            let num = v.parse::<u64>().unwrap();
-                            last_entry.status = FromPrimitive::from_u64(num).unwrap();
-                        }
-                        "executable" => {
-                            last_entry.vars.executable = Some(v.to_owned())
-                        }
-                        "var1_name" => {
-                            last_entry.vars.var1_name = Some(v.to_owned())
-                        }
-                        "var2_name" => {
-                            last_entry.vars.var2_name = Some(v.to_owned())
-                        }
-                        "var3_name" => {
-                            last_entry.vars.var3_name = Some(v.to_owned())
-                        }
-                        "var4_name" => {
-                            last_entry.vars.var4_name = Some(v.to_owned())
-                        }
-                        "var1_value" => {
-                            last_entry.vars.var1_value = Some(v.to_owned())
-                        }
-                        "var2_value" => {
-                            last_entry.vars.var2_value = Some(v.to_owned())
-                        }
-                        "var3_value" => {
-                            last_entry.vars.var3_value = Some(v.to_owned())
-                        }
-                        "var4_value" => {
-                            last_entry.vars.var4_value = Some(v.to_owned())
-                        }
-                        _ => todo!(),
-                };
-                };
-            }
-            true // Only one record will be returned anyway.
-        },
+         LIMIT 1 ;"
     )?;
+
+    let mut last_entry = Entry::empty();
+    let mut rows = statement.query([])?;
+    while let Some(row) = rows.next()? {
+        last_entry.utc_time_seconds = row.get_unwrap::<usize, u64>(INDEX_UTC_TIME_SECONDS);
+        last_entry.duration_seconds = row.get_unwrap::<usize, u64>(INDEX_DURATION_SECONDS);
+        let status_num = row.get_unwrap::<usize, i64>(INDEX_STATUS);
+        last_entry.status = FromPrimitive::from_i64(status_num).unwrap();
+        last_entry.vars.executable = row.get_unwrap::<usize, Option<String>>(INDEX_EXECUTABLE);
+        last_entry.vars.var1_name = row.get_unwrap::<usize, Option<String>>(INDEX_VAR1_NAME);
+        last_entry.vars.var2_name = row.get_unwrap::<usize, Option<String>>(INDEX_VAR2_NAME);
+        last_entry.vars.var3_name = row.get_unwrap::<usize, Option<String>>(INDEX_VAR3_NAME);
+        last_entry.vars.var4_name = row.get_unwrap::<usize, Option<String>>(INDEX_VAR4_NAME);
+        last_entry.vars.var1_value = row.get_unwrap::<usize, Option<String>>(INDEX_VAR1_VALUE);
+        last_entry.vars.var2_value = row.get_unwrap::<usize, Option<String>>(INDEX_VAR2_VALUE);
+        last_entry.vars.var3_value = row.get_unwrap::<usize, Option<String>>(INDEX_VAR3_VALUE);
+        last_entry.vars.var4_value = row.get_unwrap::<usize, Option<String>>(INDEX_VAR4_VALUE);
+    }
     debug!("Last Entry: {:?}", last_entry);
 
     Ok(last_entry)
 }
 
 fn update_existing_entry_rows_into_database(
-    connection: &sqlite::Connection,
+    connection: &rusqlite::Connection,
     existing_entries_dedup: &Vec<Entry>,
 ) -> Result<()> {
-    let mut cursor = connection
-        .prepare(
-            "UPDATE records
+    let mut statement = connection.prepare(
+        "UPDATE records
              SET duration_seconds = :duration_seconds
              WHERE utc_time_seconds = :utc_time_seconds ;",
-        )?
-        .into_cursor();
+    )?;
     for entry in existing_entries_dedup {
         let datetime = chrono::DateTime::<chrono::Utc>::from_utc(
             chrono::NaiveDateTime::from_timestamp_opt(
@@ -132,9 +116,9 @@ fn update_existing_entry_rows_into_database(
         let executable = match &entry.vars.executable {
             Some(value) => {
                 let executable_name = format_short_executable_name(value);
-                sqlite::Value::String(executable_name.to_string())
+                rusqlite::types::Value::Text(executable_name.to_string())
             }
-            None => sqlite::Value::Null,
+            None => rusqlite::types::Value::Null,
         };
 
         let var1_name = convert_entry_var_to_sql_string_value(&entry.vars.var1_name);
@@ -163,44 +147,38 @@ fn update_existing_entry_rows_into_database(
             var4_value,
         );
 
-        cursor.bind_by_name(vec![
-            (
-                ":utc_time_seconds",
-                sqlite::Value::Integer(entry.utc_time_seconds as i64),
-            ),
-            (
-                ":duration_seconds",
-                sqlite::Value::Integer(entry.duration_seconds as i64),
-            ),
-        ])?;
-        cursor.next()?;
+        statement.execute(named_params! {
+            ":utc_time_seconds": rusqlite::types::Value::Integer(entry.utc_time_seconds as i64),
+            ":duration_seconds": rusqlite::types::Value::Integer(entry.duration_seconds as i64)
+        })?;
     }
 
     Ok(())
 }
 
-fn convert_entry_var_to_sql_string_value(entry_var_name: &Option<String>) -> sqlite::Value {
+fn convert_entry_var_to_sql_string_value(
+    entry_var_name: &Option<String>,
+) -> rusqlite::types::Value {
     match &entry_var_name {
-        Some(value) => sqlite::Value::String(value.to_string()),
-        None => sqlite::Value::Null,
+        Some(value) => rusqlite::types::Value::Text(value.to_string()),
+        None => rusqlite::types::Value::Null,
     }
 }
 
-fn convert_sql_string_or_null_to_entry_var_value(sql_value: &sqlite::Value) -> Option<String> {
+fn convert_sql_value_to_option_string(sql_value: &rusqlite::types::Value) -> Option<String> {
     match sql_value {
-        sqlite::Value::String(value) => Some(value.clone()),
-        sqlite::Value::Null => None,
+        rusqlite::types::Value::Text(value) => Some(value.clone()),
+        rusqlite::types::Value::Null => None,
         _ => panic!("SQLite value can only be an String or Null type."),
     }
 }
 
 fn insert_new_entry_rows_into_database(
-    connection: &sqlite::Connection,
+    connection: &rusqlite::Connection,
     new_entries_dedup: &Vec<Entry>,
 ) -> Result<()> {
-    let mut cursor = connection
-        .prepare(
-            "INSERT INTO records (utc_time_seconds,
+    let mut statement = connection.prepare(
+        "INSERT INTO records (utc_time_seconds,
                                   duration_seconds,
                                   status,
                                   executable,
@@ -224,8 +202,7 @@ fn insert_new_entry_rows_into_database(
                      :var2_value,
                      :var3_value,
                      :var4_value)",
-        )?
-        .into_cursor();
+    )?;
 
     for entry in new_entries_dedup {
         let datetime = chrono::DateTime::<chrono::Utc>::from_utc(
@@ -246,21 +223,21 @@ fn insert_new_entry_rows_into_database(
         let time_formatted =
             crate::format::format_datetime(datetime, crate::format::DateTimeFormat::Iso);
 
-        let utc_time_seconds = sqlite::Value::Integer(entry.utc_time_seconds as i64);
-        let duration_seconds = sqlite::Value::Integer(entry.duration_seconds as i64);
+        let utc_time_seconds = rusqlite::types::Value::Integer(entry.utc_time_seconds as i64);
+        let duration_seconds = rusqlite::types::Value::Integer(entry.duration_seconds as i64);
 
         let status_num = match entry.status.to_i64() {
             Some(value) => value,
             None => panic!("Invalid EntryStatus."),
         };
-        let status = sqlite::Value::Integer(status_num);
+        let status = rusqlite::types::Value::Integer(status_num);
 
         let executable = match &entry.vars.executable {
             Some(value) => {
                 let executable_name = format_short_executable_name(value);
-                sqlite::Value::String(executable_name.to_string())
+                rusqlite::types::Value::Text(executable_name.to_string())
             }
-            None => sqlite::Value::Null,
+            None => rusqlite::types::Value::Null,
         };
 
         let var1_name = convert_entry_var_to_sql_string_value(&entry.vars.var1_name);
@@ -288,28 +265,27 @@ fn insert_new_entry_rows_into_database(
                var4_value,
         );
 
-        cursor.bind_by_name(vec![
-            (":utc_time_seconds", utc_time_seconds),
-            (":duration_seconds", duration_seconds),
-            (":status", status),
-            (":executable", executable),
-            (":var1_name", var1_name),
-            (":var2_name", var2_name),
-            (":var3_name", var3_name),
-            (":var4_name", var4_name),
-            (":var1_value", var1_value),
-            (":var2_value", var2_value),
-            (":var3_value", var3_value),
-            (":var4_value", var4_value),
-        ])?;
-        cursor.next()?;
+        statement.execute(named_params! {
+            ":utc_time_seconds": utc_time_seconds,
+            ":duration_seconds": duration_seconds,
+            ":status": status,
+            ":executable": executable,
+            ":var1_name": var1_name,
+            ":var2_name": var2_name,
+            ":var3_name": var3_name,
+            ":var4_name": var4_name,
+            ":var1_value": var1_value,
+            ":var2_value": var2_value,
+            ":var3_value": var3_value,
+            ":var4_value": var4_value,
+        })?;
     }
 
     Ok(())
 }
 
 pub struct Storage {
-    connection: sqlite::Connection,
+    connection: rusqlite::Connection,
     entries: Vec<Entry>,
     record_interval_seconds: u64,
 }
@@ -332,11 +308,10 @@ impl Storage {
             ));
         }
 
-        let db_open_flags = sqlite::OpenFlags::new()
-            .set_create()
-            .set_read_write()
-            .set_full_mutex();
-        let connection = sqlite::Connection::open_with_flags(database_file_path, db_open_flags)?;
+        let db_open_flags = rusqlite::OpenFlags::SQLITE_OPEN_CREATE
+            | rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE
+            | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX;
+        let connection = rusqlite::Connection::open_with_flags(database_file_path, db_open_flags)?;
 
         if !file_exists {
             initialize_database(&connection)?;
@@ -405,23 +380,8 @@ impl Storage {
         start_utc_time_seconds: u64,
         end_utc_time_seconds: u64,
     ) -> Result<Vec<Entry>> {
-        const INDEX_UTC_TIME_SECONDS: usize = 0;
-        const INDEX_DURATION_SECONDS: usize = 1;
-        const INDEX_STATUS: usize = 2;
-        const INDEX_EXECUTABLE: usize = 3;
-        const INDEX_VAR1_NAME: usize = 4;
-        const INDEX_VAR2_NAME: usize = 5;
-        const INDEX_VAR3_NAME: usize = 6;
-        const INDEX_VAR4_NAME: usize = 7;
-        const INDEX_VAR1_VALUE: usize = 8;
-        const INDEX_VAR2_VALUE: usize = 9;
-        const INDEX_VAR3_VALUE: usize = 10;
-        const INDEX_VAR4_VALUE: usize = 11;
-
-        let mut cursor = self
-            .connection
-            .prepare(
-                "SELECT utc_time_seconds, duration_seconds, status,
+        let mut statement = self.connection.prepare(
+            "SELECT utc_time_seconds, duration_seconds, status,
                         executable,
                         var1_name, var2_name, var3_name, var4_name,
                         var1_value, var2_value, var3_value, var4_value
@@ -429,50 +389,30 @@ impl Storage {
                  WHERE utc_time_seconds > :start_utc_time_seconds
                        AND utc_time_seconds < :end_utc_time_seconds
                  ORDER BY utc_time_seconds ASC ;",
-            )?
-            .into_cursor();
-        cursor.bind_by_name(vec![
-            (
-                ":start_utc_time_seconds",
-                sqlite::Value::Integer(start_utc_time_seconds as i64),
-            ),
-            (
-                ":end_utc_time_seconds",
-                sqlite::Value::Integer(end_utc_time_seconds as i64),
-            ),
-        ])?;
+        )?;
+        let mut rows = statement.query(named_params! {
+            ":start_utc_time_seconds": rusqlite::types::Value::Integer(start_utc_time_seconds as i64),
+            ":end_utc_time_seconds": rusqlite::types::Value::Integer(end_utc_time_seconds as i64),
+        })?;
 
         let mut entries = Vec::<Entry>::new();
-        while let Some(row) = cursor.next()? {
-            // debug!("row = {:?}", row);
-            let utc_time_seconds = row[INDEX_UTC_TIME_SECONDS].as_integer().unwrap();
-            let duration_seconds = row[INDEX_DURATION_SECONDS].as_integer().unwrap();
-            let status_num = row[INDEX_STATUS].as_integer().unwrap();
-            let status: EntryStatus =
-                FromPrimitive::from_u64(status_num.try_into().unwrap()).unwrap();
-
-            let executable = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_EXECUTABLE]);
-
-            let var1_name = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_VAR1_NAME]);
-            let var2_name = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_VAR2_NAME]);
-            let var3_name = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_VAR3_NAME]);
-            let var4_name = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_VAR4_NAME]);
-
-            let var1_value = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_VAR1_VALUE]);
-            let var2_value = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_VAR2_VALUE]);
-            let var3_value = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_VAR3_VALUE]);
-            let var4_value = convert_sql_string_or_null_to_entry_var_value(&row[INDEX_VAR4_VALUE]);
+        while let Some(row) = rows.next()? {
+            debug!("row = {:?}", row);
+            let utc_time_seconds: u64 = row.get_unwrap(INDEX_UTC_TIME_SECONDS);
+            let duration_seconds: u64 = row.get_unwrap(INDEX_DURATION_SECONDS);
+            let status_num: u64 = row.get_unwrap(INDEX_STATUS);
+            let status: EntryStatus = FromPrimitive::from_u64(status_num).unwrap();
 
             let mut vars = EntryVariablesList::empty();
-            vars.executable = executable;
-            vars.var1_name = var1_name;
-            vars.var2_name = var2_name;
-            vars.var3_name = var3_name;
-            vars.var4_name = var4_name;
-            vars.var1_value = var1_value;
-            vars.var2_value = var2_value;
-            vars.var3_value = var3_value;
-            vars.var4_value = var4_value;
+            vars.executable = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_EXECUTABLE));
+            vars.var1_name = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR1_NAME));
+            vars.var2_name = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR2_NAME));
+            vars.var3_name = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR3_NAME));
+            vars.var4_name = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR4_NAME));
+            vars.var1_value = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR1_VALUE));
+            vars.var2_value = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR2_VALUE));
+            vars.var3_value = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR3_VALUE));
+            vars.var4_value = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR4_VALUE));
 
             let entry = Entry::new(
                 utc_time_seconds.try_into()?,
@@ -488,7 +428,7 @@ impl Storage {
     pub fn write_entries(&mut self) -> Result<()> {
         // Execute the entires and close the SQLite database
         // connection.
-        self.connection.execute("BEGIN TRANSACTION;")?;
+        self.connection.execute("BEGIN TRANSACTION;", ())?;
 
         let last_entry = get_last_database_entry(&self.connection)?;
 
@@ -519,7 +459,7 @@ impl Storage {
         update_existing_entry_rows_into_database(&self.connection, &existing_entries_dedup)?;
         insert_new_entry_rows_into_database(&self.connection, &new_entries_dedup)?;
 
-        self.connection.execute("END TRANSACTION;")?;
+        self.connection.execute("END TRANSACTION;", ())?;
 
         Ok(())
     }

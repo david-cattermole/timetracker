@@ -1,6 +1,6 @@
 [package]
-name = "timetracker-core"
-description = "The core of Timetracker."
+name = "timetracker-print-lib"
+description = "The functions needed for printing Timetracker data."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,13 +10,13 @@ authors.workspace = true
 anyhow = "1.0.70"
 chrono = "0.4.19"
 clap = { version = "3.2.23", features = ["std", "derive"], default-features = false }
+colored = { version = "2.0.0", default-features = true }
 config = { version = "0.13.3", features = ["toml"], default-features = false }
 dirs = "4.0.0"
 env_logger = "0.10.0"
 log = "0.4.17"
-num-derive = "0.3"
-num-traits = "0.2"
 serde = "1.0.159"
 serde_derive = "1.0.159"
-shellexpand = "3.1.0"
-rusqlite = { version = "0.29.0", features = ["bundled"] }
+
+[dependencies.timetracker-core]
+path = "../core"

@@ -255,7 +255,7 @@ impl fmt::Display for PrintType {
 
 impl From<PrintType> for ValueKind {
     fn from(value: PrintType) -> Self {
-        ValueKind::String(format!("{}", value).to_string())
+        ValueKind::String(format!("{}", value))
     }
 }
 

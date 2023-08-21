@@ -369,3 +369,9 @@ pub fn new_recorder_settings(
 ) -> Result<ConfigBuilder<DefaultState>, ConfigError> {
     Result::Ok(config_builder)
 }
+
+pub fn new_systray_settings(
+    config_builder: ConfigBuilder<DefaultState>,
+) -> Result<ConfigBuilder<DefaultState>, ConfigError> {
+    Result::Ok(config_builder)
+}

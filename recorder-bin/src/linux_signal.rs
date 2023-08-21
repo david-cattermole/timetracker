@@ -1,9 +1,8 @@
-use libc;
-
 /// Installs signal handler function ('function_handler') for signal
 /// 'signal_number' into the currently running process.
 ///
 /// https://www.man7.org/linux/man-pages/man2/sigaction.2.html
+#[cfg(target_os = "linux")]
 pub fn install_signal_handler(signal_number: libc::c_int, function_handler: usize) {
     let mut signal_action = unsafe { std::mem::zeroed::<libc::sigaction>() };
 

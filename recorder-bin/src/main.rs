@@ -9,7 +9,6 @@ use crate::settings::CommandModes;
 use crate::settings::RecorderAppSettings;
 use anyhow::{bail, Result};
 use clap::Parser;
-use libc;
 use log::{debug, error, info, warn};
 use once_cell::sync::Lazy;
 use std::path::Path;
@@ -26,9 +25,13 @@ use timetracker_core::settings::RECORD_INTERVAL_SECONDS;
 use timetracker_core::settings::USER_IS_IDLE_LIMIT_SECONDS;
 use timetracker_core::storage::Storage;
 
+#[cfg(target_os = "linux")]
 mod linux_process;
+#[cfg(target_os = "linux")]
 mod linux_signal;
+#[cfg(target_os = "linux")]
 mod linux_x11;
+
 mod settings;
 
 /// How many enties are stored in memory before being saved to the
@@ -130,7 +133,7 @@ extern "C" fn handle_signal(signal_number: libc::c_int) {
     warn!("Received signal {}, exiting gracefully...", signal_number);
 
     let database_file_path = unsafe { &CLEANUP_DATABASE_FILE_PATH.lock().unwrap() };
-    write_data_to_storage(&database_file_path).unwrap();
+    write_data_to_storage(database_file_path).unwrap();
 
     // This will stop the full program, along with all threads
     // (including the main thread).
@@ -183,6 +186,16 @@ fn start_recording(
             return Ok(());
         }
     }
+
+    // TODO: When this this function is meant to go into a loop and
+    // query X11, instead we should make a child process that queries
+    // the X11 stuff, because it can be a little unstable in weird
+    // edge cases (that can happen on KDE). Therefore we should start
+    // a new child process that does the real work, and this
+    // ("parent") process will wait for the child-process to exit then
+    // re-run the same command when it errors. This will mean that no
+    // matter what happens the recorder will always be restarted if a
+    // panic happens.
 
     gtk::init()?;
 

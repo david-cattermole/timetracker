@@ -9,11 +9,13 @@ use timetracker_core::format_short_executable_name;
 
 type UserID = u32;
 
+#[cfg(target_os = "linux")]
+use std::os::linux::fs::MetadataExt;
+
+#[cfg(target_os = "linux")]
 pub fn read_process_environment_variables(
     process_id: ProcessID,
 ) -> Result<HashMap<String, String>> {
-    // NOTE: This function assumes the OS running is Linux.
-
     let process_id_str: String = format!("{}", process_id);
 
     let mut path = PathBuf::new();
@@ -22,7 +24,6 @@ pub fn read_process_environment_variables(
     path.push(process_id_str);
     path.push("environ");
 
-    // println!("Reading: {:?}", path);
     let file_content = read_to_string(&path)?;
     let lines: Vec<&str> = file_content.split('\0').collect();
 
@@ -42,7 +43,8 @@ pub fn read_process_environment_variables(
     Ok(map)
 }
 
-fn parse_loginuid_file_contents(file_content: &String) -> Result<UserID> {
+#[cfg(target_os = "linux")]
+fn _parse_loginuid_file_contents(file_content: &str) -> Result<UserID> {
     let lines: Vec<&str> = file_content.split('\0').collect();
 
     match lines.is_empty() {
@@ -57,17 +59,18 @@ fn parse_loginuid_file_contents(file_content: &String) -> Result<UserID> {
     }
 }
 
-/// Get the current user's user id (uid).
+/// Get the user id (uid) of the 'logged-in' user that launched the given process (pid).
 ///
-/// On Linux multiple users may be logged into the same machine and
-/// running timetracker-recorder at the same time.
-pub fn get_user_id_running_process_id(process_id: ProcessID) -> Result<UserID> {
-    // NOTE: This function assumes the OS running is Linux.
-
-    // TODO: Make sure this function actually returns the correct user
-    // ID when there are multiple users on a computer running this
-    // process concurrently.
-
+/// This is different from 'get_user_id_running_process_id()' because
+/// this function will return the 'logged-in' user, not the owner of
+/// the process.
+///
+/// For example, if user 'bob' opens a 'bash' shell and runs 'su -
+/// alice' so that bob is logged-in as 'alice', 'bob' is the logged-in
+/// user, but 'alice' is the owner of any processes that are started
+/// inside the 'su bash' shell.
+#[cfg(target_os = "linux")]
+fn _get_login_user_id_running_process_id(process_id: ProcessID) -> Result<UserID> {
     let process_id_str: String = format!("{}", process_id);
 
     let mut path = PathBuf::new();
@@ -77,22 +80,45 @@ pub fn get_user_id_running_process_id(process_id: ProcessID) -> Result<UserID> {
     path.push("loginuid");
 
     let file_content = read_to_string(&path)?;
-    let user_id = parse_loginuid_file_contents(&file_content)?;
+    let user_id = _parse_loginuid_file_contents(&file_content)?;
     Ok(user_id)
 }
 
+/// Get the user id (uid) owner of the given process (pid).
+///
+/// This is different from 'get_login_user_id_running_process_id()'
+/// because it returns the user id that 'owns' the process, where as
+/// the user that was 'logged in' when running the process is returned
+/// from the other function.
+#[cfg(target_os = "linux")]
+pub fn get_user_id_running_process_id(process_id: ProcessID) -> Result<UserID> {
+    let process_id_str: String = format!("{}", process_id);
+
+    let mut path = PathBuf::new();
+    path.push("/");
+    path.push("proc");
+    path.push(process_id_str);
+    path.push("cmdline");
+
+    let file_metadata = std::fs::metadata(path)?;
+
+    let user_id = file_metadata.st_uid();
+    Ok(user_id)
+}
+
+/// Gets all processes (as 'pid's) that not this current process, and
+/// are owned by 'user_id_owner', and are named 'executable_name'.
+///
+/// 'user_id_owner' is used to make sure only the process ids that are
+/// owned by the current user are returned. On Linux multiple users
+/// may be logged into the same machine and running
+/// 'timetracker-recorder' at the same time on the same machine.
+#[cfg(target_os = "linux")]
 pub fn find_process_ids_by_user_and_executable_name(
     executable_name: &str,
-    this_user_id: UserID,
+    user_id_owner: UserID,
     this_process_id: ProcessID,
 ) -> Result<Vec<ProcessID>> {
-    // NOTE: This function assumes the OS running is Linux.
-
-    // TODO: Get the current user's user id (uid) and make sure to
-    // process the process ids to only processes that are owned by the
-    // current user. On Linux multiple users may be logged into the
-    // same machine and running timetracker-recorder at the same time
-    // on the same machine.
     let mut path = PathBuf::new();
     path.push("/");
     path.push("proc");
@@ -113,20 +139,17 @@ pub fn find_process_ids_by_user_and_executable_name(
     let process_ids: Vec<ProcessID> = valid_directories
         .iter()
         .filter_map(|p| {
-            // debug!("Reading: {:?}", p);
             let process_id_str = p.file_name();
-
-            let mut loginuid_path = p.to_path_buf();
-            loginuid_path.push("loginuid");
-            let file_content = read_to_string(loginuid_path).ok()?;
-            let user_id = parse_loginuid_file_contents(&file_content).ok()?;
-            if user_id != this_user_id {
-                return None;
-            }
 
             let mut cmdline_path = p.to_path_buf();
             cmdline_path.push("cmdline");
-            let file_content = read_to_string(cmdline_path).ok()?;
+
+            let file_metadata = std::fs::metadata(&cmdline_path).ok()?;
+            if user_id_owner != file_metadata.st_uid() {
+                return None;
+            }
+
+            let file_content = read_to_string(&cmdline_path).ok()?;
 
             let executable =
                 timetracker_core::strip_executable_name(&file_content.replace('\0', " "))
@@ -159,6 +182,7 @@ pub fn find_process_ids_by_user_and_executable_name(
     Ok(process_ids)
 }
 
+#[cfg(target_os = "linux")]
 pub fn terminate_processes(process_ids: &Vec<ProcessID>) -> Result<()> {
     for process_id in process_ids {
         let mut kill = Command::new("kill")
@@ -169,8 +193,8 @@ pub fn terminate_processes(process_ids: &Vec<ProcessID>) -> Result<()> {
     Ok(())
 }
 
+#[cfg(target_os = "linux")]
 pub fn get_process_id_executable_name(process_id: ProcessID) -> Result<String> {
-    // NOTE: This function assumes the OS running is Linux.
     let mut path = PathBuf::new();
     let process_id_str: String = format!("{}", process_id);
     path.push("/");
@@ -178,7 +202,6 @@ pub fn get_process_id_executable_name(process_id: ProcessID) -> Result<String> {
     path.push(process_id_str);
     path.push("cmdline");
 
-    // println!("Reading: {:?}", path);
     let file_content = read_to_string(&path)?;
     let executable =
         timetracker_core::strip_executable_name(&file_content.replace('\0', " ")).to_string();
