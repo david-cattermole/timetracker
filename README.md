@@ -3,33 +3,35 @@
 **Timetracker automatically records application activity to gather
 personal time statistics.**
 
-Timetracker runs in the background to gather how much time you use
-software, and the (environment variable) context that the software is
-used in.
+Timetracker runs in the background, keeping track of the time you
+spend using different software and the specific environment you're
+working in. It remembers things like the software you're using, the
+context it is used, and more.
 
-After the data is recorded, it may be queried to find out how much
-time you've spent:
+Once it has all this info, you can ask Timetracker:
 
- * active on a computer, and when were you active?
- * working in a specific software?
- * working with a set of environment variables?
- * working with-in a working directory (with the `PWD` environment
-   variable)?
+ * How much time you've spent actively using your computer, and when
+   you were active.
+ * How much time you've spent in a particular software.
+ * How much time you've spent in a certain environment (like a project
+   setting).
+ * How much time you've spent working within a specific working
+   directory.
 
 Features:
 
- * Records the current active window and (a limited set of)
-   environment variables into a local file.
+ * Records the current active window and (a limited set of) environment
+   variables into a local file.
  * Queries the local file to display time-based activity information.
 
-Timetracker is a *personal* tool and is intended to only store data
-*locally* in the user's home directory. Users may delete their data at
-anytime.
+Timetracker is meant for your *personal* use. It only keeps your data
+on your own computer in your home folder - if you want, you can always
+delete your data.
 
-Timetracker was developed for 3D Animation, Computer Graphics (CG) and
-Visual Effects (VFX) productions, where environment variables passed
-to software is used to denote the different projects, sequences, shots
-and tasks that are worked on by artists.
+Timetracker was created with 3D Animation, Computer Graphics (CG), and
+Visual Effects (VFX) work in mind. It's especially useful for keeping
+track of which projects, sequences, shots, and tasks artists are
+worked on.
 
 ## Getting Started
 
