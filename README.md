@@ -10,7 +10,7 @@ used in.
 After the data is recorded, it may be queried to find out how much
 time you've spent:
 
- * active on a computer, and when where you active?
+ * active on a computer, and when were you active?
  * working in a specific software?
  * working with a set of environment variables?
  * working with-in a working directory (with the `PWD` environment
