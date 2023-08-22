@@ -102,7 +102,8 @@ default values. You do not need to specify any or all variables.
 # These are the environment variables that will be recorded. Use
 # variables that are set in your applications that can identify
 # important information. For example in VFX or Animation projects, you
-# may want to record the project name, sequence and shot.
+# may want to record the project name, sequence and shot. You can give
+# up to *five* environment variable names.
 names = ["PROJECT", "SEQUENCE", "SHOT", "PWD"]
 
 [print]
