@@ -414,12 +414,7 @@ impl Storage {
             vars.var3_value = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR3_VALUE));
             vars.var4_value = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR4_VALUE));
 
-            let entry = Entry::new(
-                utc_time_seconds.try_into()?,
-                duration_seconds.try_into()?,
-                status,
-                vars,
-            );
+            let entry = Entry::new(utc_time_seconds, duration_seconds, status, vars);
             entries.push(entry);
         }
         Ok(entries)
