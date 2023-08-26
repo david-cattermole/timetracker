@@ -1,4 +1,5 @@
-use crate::aggregate::get_map_keys_sorted;
+use crate::aggregate::get_map_keys_sorted_general;
+use crate::aggregate::get_map_keys_sorted_strings;
 use crate::aggregate::sum_entry_activity_duration;
 use crate::aggregate::sum_entry_duration;
 use crate::aggregate::sum_entry_executable_duration;
@@ -8,6 +9,7 @@ use crate::datetime::get_weekdays_datetime_local;
 use crate::datetime::DateTimeLocalPair;
 use crate::variable::combine_variable_names;
 use crate::variable::Variable;
+
 use anyhow::Result;
 use chrono::Datelike;
 use colored::Colorize;
@@ -15,6 +17,7 @@ use timetracker_core::entries::Entry;
 use timetracker_core::entries::EntryStatus;
 use timetracker_core::format::format_date;
 use timetracker_core::format::format_duration;
+use timetracker_core::format::format_naive_time_no_seconds;
 use timetracker_core::format::DateTimeFormat;
 use timetracker_core::format::DurationFormat;
 use timetracker_core::format::PrintType;
@@ -200,7 +203,7 @@ fn generate_entry_variables_lines(
 ) {
     let duration_map = sum_entry_variables_duration(entries, variables, EntryStatus::Active);
     let keys = duration_map.keys();
-    let sorted_keys = get_map_keys_sorted(&keys);
+    let sorted_keys = get_map_keys_sorted_strings(&keys);
 
     for key in sorted_keys {
         if let Some(value) = duration_map.get(&key) {
@@ -421,7 +424,7 @@ fn generate_entry_software_lines(
 ) {
     let executable_duration_map = sum_entry_executable_duration(entries, EntryStatus::Active);
     let keys = executable_duration_map.keys();
-    let sorted_keys = get_map_keys_sorted(&keys);
+    let sorted_keys = get_map_keys_sorted_strings(&keys);
 
     let mut lines_start = Vec::new();
     let mut lines_end = Vec::new();
@@ -542,11 +545,9 @@ fn generate_entry_activity_lines(
         add_fringe_datetimes,
         fill_datetimes_gaps,
         time_block_unit,
-        datetime_format,
         EntryStatus::Active,
     );
-    let keys = duration_map.keys();
-    let sorted_keys = get_map_keys_sorted(&keys);
+    let sorted_keys = get_map_keys_sorted_general(&duration_map.keys());
 
     let mut lines_start = Vec::new();
     let mut lines_end = Vec::new();
@@ -577,7 +578,8 @@ fn generate_entry_activity_lines(
             }
             duration_text.push_str(&format!(" | {:2}m", num_minutes).to_string());
 
-            let line_start = format!("{}- {}", line_prefix, key).to_string();
+            let key_string = format_naive_time_no_seconds(*key, datetime_format);
+            let line_start = format!("{}- {}", line_prefix, key_string).to_string();
             let line_end = duration_text.clone();
 
             lines_start.push(line_start);
@@ -647,7 +649,7 @@ fn generate_duration_bins_text(
 
     for duration_ratio in duration_bins_normalized {
         let duration_ratio = *duration_ratio;
-        let mut text = "".to_string();
+        let text;
         if duration_ratio < 0.05 {
             text = " ".to_string();
         } else if duration_ratio <= 0.2 {
@@ -668,7 +670,7 @@ fn generate_duration_bins_text(
             } else {
                 text = "\u{2593}".color(color).to_string();
             }
-        } else if duration_ratio <= 1.0 {
+        } else {
             if !use_unicode_blocks {
                 text = "X".color(color).to_string();
             } else {
@@ -704,15 +706,15 @@ fn generate_entry_day_activity_lines(
         add_fringe_datetimes,
         fill_datetimes_gaps,
         time_block_unit,
-        datetime_format,
         EntryStatus::Active,
     );
-    let keys = duration_map.keys();
-    let sorted_keys = get_map_keys_sorted(&keys);
+    let sorted_keys = get_map_keys_sorted_general(&duration_map.keys());
     let sorted_keys_length = sorted_keys.len() as f32;
 
     let key_first = &sorted_keys[0];
     let key_last = &sorted_keys[sorted_keys.len() - 1];
+    let key_first_string = format_naive_time_no_seconds(*key_first, datetime_format);
+    let key_last_string = format_naive_time_no_seconds(*key_last, datetime_format);
 
     let mut duration_bins: Vec<f32> = Vec::with_capacity(bar_graph_character_num_width as usize);
     duration_bins.resize(bar_graph_character_num_width as usize, 0.0);
@@ -736,7 +738,6 @@ fn generate_entry_day_activity_lines(
                 num_minutes = increment_minutes;
             }
 
-            // for bin_index in bin_index_min..bin_index_max {
             for duration_bin in duration_bins
                 .iter_mut()
                 .take(bin_index_max)
@@ -761,14 +762,17 @@ fn generate_entry_day_activity_lines(
     let mut duration_text =
         generate_duration_bins_text(&duration_bins_normalized, use_unicode_blocks, color);
     duration_text.push(' ');
-    duration_text.push_str(key_last);
+    duration_text.push_str(&key_last_string);
 
     let mut lines_start = Vec::new();
     let mut lines_end = Vec::new();
 
     let (start_datetime_pair, _end_datetime_pair) = weekday_datetime_pair;
     let date_string = format_date(start_datetime_pair, datetime_format);
-    let line_start = format!("{}- {} {} {}", line_prefix, weekday, date_string, key_first);
+    let line_start = format!(
+        "{}- {} {} {}",
+        line_prefix, weekday, date_string, key_first_string
+    );
     let line_end = duration_text.clone();
 
     lines_start.push(line_start);

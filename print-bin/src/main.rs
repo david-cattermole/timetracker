@@ -8,7 +8,7 @@ use std::time::SystemTime;
 use timetracker_core::filesystem::get_database_file_path;
 use timetracker_core::settings::RECORD_INTERVAL_SECONDS;
 use timetracker_core::storage::Storage;
-use timetracker_print_lib::aggregate::get_map_keys_sorted;
+use timetracker_print_lib::aggregate::get_map_keys_sorted_strings;
 use timetracker_print_lib::preset::create_presets;
 use timetracker_print_lib::preset::generate_presets;
 use timetracker_print_lib::print::get_relative_week_start_end;
@@ -49,7 +49,7 @@ fn print_presets(args: &CommandArguments, settings: &PrintAppSettings) -> Result
     }
 
     if !missing_preset_names.is_empty() {
-        let all_preset_names = get_map_keys_sorted(&settings.print.presets.keys());
+        let all_preset_names = get_map_keys_sorted_strings(&settings.print.presets.keys());
         warn!(
             "Preset names {:?} are invalid. possible preset names are: {:?}",
             missing_preset_names, all_preset_names,
@@ -60,7 +60,7 @@ fn print_presets(args: &CommandArguments, settings: &PrintAppSettings) -> Result
 }
 
 fn list_presets(settings: &PrintAppSettings) -> Result<()> {
-    let all_preset_names = get_map_keys_sorted(&settings.print.presets.keys());
+    let all_preset_names = get_map_keys_sorted_strings(&settings.print.presets.keys());
     for preset_name in &all_preset_names {
         println!("{}", preset_name);
     }

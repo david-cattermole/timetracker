@@ -151,6 +151,17 @@ where
     }
 }
 
+pub fn format_naive_time_no_seconds(
+    datetime: chrono::NaiveTime,
+    datetime_format: DateTimeFormat,
+) -> String {
+    match datetime_format {
+        DateTimeFormat::Iso => datetime.format("%H:%M").to_string(),
+        DateTimeFormat::UsaMonthDayYear => datetime.format("%I:%M %p").to_string(),
+        DateTimeFormat::Locale => datetime.format("%X").to_string(),
+    }
+}
+
 pub fn format_time<Tz: TimeZone>(
     datetime: chrono::DateTime<Tz>,
     datetime_format: DateTimeFormat,
