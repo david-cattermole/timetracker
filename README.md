@@ -61,6 +61,10 @@ $ timetracker-recorder start &
 # killing any existing processes at the same time.
 $ timetracker-recorder start --terminate-existing-processes
 
+# Print the status of the status.
+$ timetracker-recorder status
+timetracker-recorder is running (pids [16683]).
+
 # Or, you can stop all running timetracker processes.
 $ timetracker-recorder stop
 ```
