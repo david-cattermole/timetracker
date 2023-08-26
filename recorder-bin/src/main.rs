@@ -295,6 +295,29 @@ fn start_recording(
     Ok(())
 }
 
+/// Print the status of the recorder - can we find any reunning
+/// recorder processes?
+fn print_recorder_status() -> Result<()> {
+    let this_process_id = std::process::id();
+    let this_user_id = get_user_id_running_process_id(this_process_id)?;
+    let running_process_ids = find_process_ids_by_user_and_executable_name(
+        THIS_EXECUTABLE_NAME,
+        this_user_id,
+        this_process_id,
+    )?;
+
+    if running_process_ids.is_empty() {
+        println!("{} is not running.", THIS_EXECUTABLE_NAME);
+    } else {
+        println!(
+            "{} is running (pids {:?}).",
+            THIS_EXECUTABLE_NAME, running_process_ids
+        );
+    }
+
+    Ok(())
+}
+
 /// Stops recording activity by finding existing processes and sending
 /// a SIGTERM signal.
 fn stop_recording() -> Result<()> {
@@ -342,6 +365,7 @@ fn main() -> Result<()> {
         CommandModes::Start {
             terminate_existing_processes,
         } => start_recording(&args, settings, *terminate_existing_processes)?,
+        CommandModes::Status => print_recorder_status()?,
         CommandModes::Stop => stop_recording()?,
     }
 

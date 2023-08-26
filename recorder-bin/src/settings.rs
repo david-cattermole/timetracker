@@ -23,7 +23,7 @@ pub struct CommandArguments {
 
 #[derive(Debug, Subcommand)]
 pub enum CommandModes {
-    /// Start the Recorder
+    /// Start the Recorder.
     Start {
         /// Automatically terminate (SIGTERM) existing
         /// timetracker-recorder processes (to ensure only one process
@@ -31,7 +31,9 @@ pub enum CommandModes {
         #[clap(long, value_parser, default_value_t = false)]
         terminate_existing_processes: bool,
     },
-    /// Stop the recorder
+    /// Status of the recorder.
+    Status,
+    /// Stop the recorder.
     Stop,
 }
 
