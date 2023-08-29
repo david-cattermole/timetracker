@@ -13,6 +13,7 @@ use crate::variable::Variable;
 use anyhow::Result;
 use chrono::Datelike;
 use colored::Colorize;
+use log::debug;
 use timetracker_core::entries::Entry;
 use timetracker_core::entries::EntryStatus;
 use timetracker_core::format::format_date;
@@ -709,17 +710,16 @@ fn generate_entry_day_activity_lines(
         EntryStatus::Active,
     );
     let sorted_keys = get_map_keys_sorted_general(&duration_map.keys());
-    let sorted_keys_length = sorted_keys.len() as f32;
-
-    let key_first = &sorted_keys[0];
-    let key_last = &sorted_keys[sorted_keys.len() - 1];
-    let key_first_string = format_naive_time_no_seconds(*key_first, datetime_format);
-    let key_last_string = format_naive_time_no_seconds(*key_last, datetime_format);
+    if sorted_keys.len() > 0 {
+        debug!("No keys found for duration map: {:#?}", duration_map);
+        return;
+    }
 
     let mut duration_bins: Vec<f32> = Vec::with_capacity(bar_graph_character_num_width as usize);
     duration_bins.resize(bar_graph_character_num_width as usize, 0.0);
 
     let mut max_duration_bin_value = 0.0;
+    let sorted_keys_length = sorted_keys.len() as f32;
     for (i, key) in sorted_keys.iter().enumerate() {
         let key_ratio_min = (i as f32) / sorted_keys_length;
         let key_ratio_max = ((i + 1) as f32) / sorted_keys_length;
@@ -757,6 +757,11 @@ fn generate_entry_day_activity_lines(
         .iter_mut()
         .map(|x| *x * inverse_max_value)
         .collect();
+
+    let key_first = &sorted_keys[0];
+    let key_last = &sorted_keys[sorted_keys.len() - 1];
+    let key_first_string = format_naive_time_no_seconds(*key_first, datetime_format);
+    let key_last_string = format_naive_time_no_seconds(*key_last, datetime_format);
 
     let use_unicode_blocks = false;
     let mut duration_text =
