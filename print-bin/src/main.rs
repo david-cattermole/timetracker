@@ -26,11 +26,17 @@ fn print_presets(args: &CommandArguments, settings: &PrintAppSettings) -> Result
         RECORD_INTERVAL_SECONDS,
     )?;
 
+    let relative_week = if args.last_week {
+        -1
+    } else {
+        args.relative_week
+    };
+
     // 'relative_week' is added to the week number to find. A value of
     // '-1' will get the previous week, a value of '0' will get the
     // current week, and a value of '1' will get the next week (which
     // shouldn't really give any results, so it's probably pointless).
-    let week_datetime_pair = get_relative_week_start_end(args.relative_week)?;
+    let week_datetime_pair = get_relative_week_start_end(relative_week)?;
 
     let (presets, missing_preset_names) = create_presets(
         settings.print.time_scale,

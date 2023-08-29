@@ -11,6 +11,11 @@ use timetracker_core::settings::PrintSettings;
 #[derive(Parser, Debug)]
 #[clap(author = "David Cattermole, Copyright 2023", version, about)]
 pub struct CommandArguments {
+    /// Return the last week's results, shortcut for
+    /// '--relative-week=-1'.
+    #[clap(long, value_parser, default_value_t = false)]
+    pub last_week: bool,
+
     /// Relative week number. '0' is the current week, '-1' is the
     /// previous week, etc.
     #[clap(short = 'w', long, value_parser, default_value_t = 0)]

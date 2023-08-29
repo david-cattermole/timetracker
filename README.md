@@ -75,7 +75,10 @@ Printing recorded data:
 $ timetracker-print
 
 # Display information for last week.
-$ timetracker-print --relative-week=-1
+$ timetracker-print --last-week
+
+# Display information for two weeks ago.
+$ timetracker-print --relative-week=-2
 
 # Display information using only specific presets.
 $ timetracker-print -p activity_weekdays -p software_week
