@@ -27,7 +27,7 @@ fn main() -> Result<()> {
     {
         let now = SystemTime::now();
 
-        let full_settings = FullConfigurationSettings::new(args.load_user_overrides);
+        let full_settings = FullConfigurationSettings::new(args.defaults);
         if full_settings.is_err() {
             bail!("Configuration structure is invalid: {:?}", full_settings);
         }

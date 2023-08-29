@@ -11,9 +11,10 @@ use timetracker_core::settings::DEFAULT_CONFIG_FILE_NAME;
 #[derive(Parser, Debug)]
 #[clap(author = "David Cattermole, Copyright 2023", version, about)]
 pub struct CommandArguments {
-    /// Load the existing user setting values?
+    /// If true, ignore any user configuration files and return
+    /// default configuration options.
     #[clap(long, value_parser, default_value_t = false)]
-    pub load_user_overrides: bool,
+    pub defaults: bool,
 
     /// Override the directory to search for the database file.
     #[clap(long, value_parser)]
@@ -40,7 +41,7 @@ pub struct ConfigureAppSettings {
 
 impl ConfigureAppSettings {
     pub fn new(arguments: &CommandArguments) -> Result<Self, ConfigError> {
-        let mut builder = new_core_settings(None, None, arguments.load_user_overrides)?;
+        let mut builder = new_core_settings(None, None, arguments.defaults)?;
 
         let default_config_dir = find_existing_configuration_directory_path()
             .expect("Could not find a default config directory ($HOME, $HOME/.config or $XDG_CONFIG_HOME).")
@@ -64,8 +65,8 @@ pub struct FullConfigurationSettings {
 }
 
 impl FullConfigurationSettings {
-    pub fn new(load_user_overrides: bool) -> Result<Self, ConfigError> {
-        let mut builder = new_core_settings(None, None, load_user_overrides)?;
+    pub fn new(defaults: bool) -> Result<Self, ConfigError> {
+        let mut builder = new_core_settings(None, None, defaults)?;
         builder = new_print_settings(builder)?;
 
         let settings = builder.build()?;

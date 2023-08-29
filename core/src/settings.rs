@@ -44,7 +44,7 @@ pub struct CoreSettings {
 pub fn new_core_settings(
     database_dir: Option<String>,
     database_file_name: Option<String>,
-    load_user_overrides: bool,
+    defaults: bool,
 ) -> Result<ConfigBuilder<DefaultState>, ConfigError> {
     let env_var_names = vec!["PWD".to_string(); 1];
 
@@ -69,7 +69,7 @@ pub fn new_core_settings(
         .set_override_option("core.database_file_name", database_file_name)?;
 
     // Runtime configuration file options.
-    if load_user_overrides {
+    if !defaults {
         let config_file_name = DEFAULT_CONFIG_FILE_NAME;
         let env_config_path = std::env::var("TIMETRACKER_CONFIG_PATH");
         let user_config_path: Option<String> = match env_config_path {

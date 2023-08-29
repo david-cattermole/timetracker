@@ -48,7 +48,7 @@ impl RecorderAppSettings {
         let builder = new_core_settings(
             arguments.database_dir.clone(),
             arguments.database_file_name.clone(),
-            true,
+            false,
         )?;
         let builder = new_recorder_settings(builder)?;
 

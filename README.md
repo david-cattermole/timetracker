@@ -35,19 +35,19 @@ worked on.
 
 ## Getting Started
 
-First, create a new basic configuration file:
+First, create a new default configuration file:
 ```bash
-$ timetracker-configure > ~/.config/.timetracker.toml   # '~/.timetracker.toml' also works.
+$ timetracker-configure --defaults > ~/.config/.timetracker.toml   # '~/.timetracker.toml' also works.
 ```
 
 Edit and display the resolved configuration file:
 ```bash
 # Edit your configuration text file as needed with a text editor
-# such as 'nano', 'emacs', or 'vi'.
-$ nano ~/.config/.timetracker.toml
+# such as 'gedit', 'kate', 'nano', 'emacs', or 'vi'.
+$ gedit ~/.config/.timetracker.toml
 
 # Display the fully resolved configuration file that will be used.
-$ timetracker-configure --load-user-overrides
+$ timetracker-configure
 ```
 See the "Configuration File Example" below for more details of setting
 up your configuration file.
@@ -106,8 +106,9 @@ default values. You do not need to specify any or all variables.
 # These are the environment variables that will be recorded. Use
 # variables that are set in your applications that can identify
 # important information. For example in VFX or Animation projects, you
-# may want to record the project name, sequence and shot. You can give
-# up to *five* environment variable names.
+# may want to record the project name, sequence, shot and current
+# working directory. You can give up to *five* environment variable
+# names.
 names = ["PROJECT", "SEQUENCE", "SHOT", "PWD"]
 
 [print]
