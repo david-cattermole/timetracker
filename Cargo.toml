@@ -12,3 +12,5 @@ members = [
     "print-lib",
     "recorder-bin",
 ]
+
+resolver = "2"
