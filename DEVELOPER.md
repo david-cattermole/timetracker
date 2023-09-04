@@ -4,6 +4,36 @@ Timetracker is written with the [Rust Programming
 Language](www.rust-lang.org), and Rust must be installed to build the
 project. Rust does not need to be installed to run Timetracker.
 
+# Build Dependencies
+
+You will need:
+
+* C++ Compilier (GCC - GNU Compiler Collection)
+* GNOME Toolkit v3 (GTK3)
+** GLIB2
+** ATK
+** Cairo
+* X11 libraries.
+* X11 XScreenSaver library..
+
+The easiest way to set up your build environment is to use the
+provided Docker files, like this:
+```bash
+# Go to the unzipped projecy directory.
+$ cd /path/to/project/directory/timetracker
+
+# Build Docker image (assumes the Docker Engine is already started)
+$ sudo docker build --file Dockerfile_centos7 -t timetracker-linux-centos7-build .
+
+# Go into the Docker container.
+$ sudo docker run --rm --interactive --volume "${PWD}:/timetracker" --tty timetracker-linux-centos7-build
+```
+
+The following sections assume you have all dependencies installed in
+the current shell.
+
+# Building
+
 To build Timetracker (in debug mode), use the Rust package manager
 Cargo:
 ```bash

@@ -27,16 +27,24 @@ Timetracker.
 You can copy the 'timetracker-*' files from '${HOME}/.cargo/bin/' to
 any directory accessible via your '${PATH}' environment variable.
 
-## How to Build and Install From Zip File?
+## How to Build and Install From Zip File? (with Docker)
 
 Alternatively if you want more control you can download the .zip file
-from GitHub, unzip the files, then run:
+from GitHub, unzip the files, then use the provided Docker file to set
+up the needed environment.
+
 ```bash
 # Go to the unzipped projecy directory.
 $ cd /path/to/project/directory/timetracker
 
-# Compile the project.
-$ cargo build --release --verbose
+# Build Docker image (assumes the Docker Engine is already started)
+$ sudo docker build --file Dockerfile_centos7 -t timetracker-linux-centos7-build .
+
+# Go into the Docker container.
+$ sudo docker run --rm --interactive --volume "${PWD}:/timetracker" --tty timetracker-linux-centos7-build
+
+# Now, inside the Docker coontainer, compile the project.
+> cargo build --release --verbose
 ...
    Fresh timetracker-configure v0.1.0 (/path/to/project/directory/timetracker/configure-bin)
    Fresh timetracker-recorder v0.1.0 (/path/to/project/directory/timetracker/recorder-bin)
@@ -46,11 +54,12 @@ Finished release [optimized] target(s) in 0.12s
 # By default the files will be stored in the
 # "<project directory>/target/release/" directory.
 
-$ cargo run --release --bin timetracker-recorder
+# (Inside the Docker container)
+> cargo run --release --bin timetracker-recorder
 Finished release [optimized] target(s) in 0.11s
  Running `/path/to/project/directory/timetracker/target/release/timetracker-recorder`
 
-# Copy the binary files to your preferred directory.
+# Copy the binary files to your preferred directory (inside the Docker container).
 $ cd /path/to/project/directory/timetracker/target/release/
 $ cp timetracker-configure timetracker-print timetracker-recorder /path/to/install/directory/
 ```
