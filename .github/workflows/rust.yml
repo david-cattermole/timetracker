@@ -16,10 +16,23 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+
     - name: Install Dependencies
       run: sudo apt-get update && sudo apt-get install -y librust-gtk-dev libgdk3.0-cil libgdk3.0-cil-dev libgtk3.0-cil libgtk3.0-cil-dev libatk1.0-dev libpango1.0-dev libcairo2-dev libgio3.0-cil-dev libglib3.0-cil-dev libx11-6 libx11-dev libxss1 libxss-dev
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
+
+    - name: Test
       run: cargo test --verbose
 
+    - name: Build
+      run: cargo build --release --all --verbose
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: |
+          target/release/timetracker-configure
+          target/release/timetracker-print
+          target/release/timetracker-recorder
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
