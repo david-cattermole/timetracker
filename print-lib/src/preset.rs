@@ -60,6 +60,7 @@ pub fn create_presets(
                     value.bar_graph_character_num_width,
                     core_preset.bar_graph_character_num_width,
                 );
+                let variable_names = value.variable_names.clone();
 
                 PrintPresetSettings::new(
                     print_type,
@@ -68,7 +69,7 @@ pub fn create_presets(
                     format_duration,
                     time_block_unit,
                     bar_graph_character_num_width,
-                    Some(environment_variables_names.to_vec()),
+                    variable_names,
                 )
             }
             None => {
