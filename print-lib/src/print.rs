@@ -710,7 +710,7 @@ fn generate_entry_day_activity_lines(
         EntryStatus::Active,
     );
     let sorted_keys = get_map_keys_sorted_general(&duration_map.keys());
-    if sorted_keys.len() == 0 {
+    if sorted_keys.is_empty() {
         debug!("No sorted keys found for duration map: {:#?}", duration_map);
         return;
     }
