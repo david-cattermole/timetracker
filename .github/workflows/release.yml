@@ -1,0 +1,40 @@
+name: Release
+
+permissions:
+  contents: write
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Dependencies
+      run: sudo apt-get update && sudo apt-get install -y librust-gtk-dev libgdk3.0-cil libgdk3.0-cil-dev libgtk3.0-cil libgtk3.0-cil-dev libatk1.0-dev libpango1.0-dev libcairo2-dev libgio3.0-cil-dev libglib3.0-cil-dev libx11-6 libx11-dev libxss1 libxss-dev
+
+    - name: Test
+      run: cargo test --verbose
+
+    - name: Build
+      run: cargo build --release --all --verbose
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        draft: true
+        files: |
+          target/release/timetracker-configure
+          target/release/timetracker-print
+          target/release/timetracker-recorder
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
