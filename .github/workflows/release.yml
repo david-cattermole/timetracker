@@ -26,15 +26,12 @@ jobs:
       run: cargo test --verbose
 
     - name: Build
-      run: cargo build --release --all --verbose
+      run: cargo build --release --all --verbose && mv target/release/timetracker-configure target/release/timetracker-print target/release/timetracker-recorder . && zip "timetracker-${{ github.ref_name }}.zip" timetracker-configure timetracker-print timetracker-recorder
 
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
         draft: true
-        files: |
-          target/release/timetracker-configure
-          target/release/timetracker-print
-          target/release/timetracker-recorder
+        files: timetracker-${{ github.ref_name }}.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
