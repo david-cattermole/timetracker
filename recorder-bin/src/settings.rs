@@ -3,6 +3,7 @@ use config::ConfigError;
 use serde_derive::Deserialize;
 use timetracker_core::settings::new_core_settings;
 use timetracker_core::settings::new_recorder_settings;
+use timetracker_core::settings::validate_core_settings;
 use timetracker_core::settings::CoreSettings;
 
 #[derive(Parser, Debug)]
@@ -52,7 +53,9 @@ impl RecorderAppSettings {
         )?;
         let builder = new_recorder_settings(builder)?;
 
-        let settings = builder.build()?;
-        settings.try_deserialize()
+        let settings: Self = builder.build()?.try_deserialize()?;
+        validate_core_settings(&settings.core).unwrap();
+
+        Ok(settings)
     }
 }

@@ -25,10 +25,16 @@ const INDEX_VAR1_NAME: usize = 4;
 const INDEX_VAR2_NAME: usize = 5;
 const INDEX_VAR3_NAME: usize = 6;
 const INDEX_VAR4_NAME: usize = 7;
-const INDEX_VAR1_VALUE: usize = 8;
-const INDEX_VAR2_VALUE: usize = 9;
-const INDEX_VAR3_VALUE: usize = 10;
-const INDEX_VAR4_VALUE: usize = 11;
+const INDEX_VAR5_NAME: usize = 8;
+const INDEX_VAR1_VALUE: usize = 9;
+const INDEX_VAR2_VALUE: usize = 10;
+const INDEX_VAR3_VALUE: usize = 11;
+const INDEX_VAR4_VALUE: usize = 12;
+const INDEX_VAR5_VALUE: usize = 13;
+
+/// The maximum number of environment variables that can be stored in
+/// the database.
+pub const ENVIRONMENT_VARIABLE_NAMES_MAX_COUNT: usize = 5;
 
 fn initialize_database(connection: &rusqlite::Connection) -> Result<()> {
     debug!("Initialize Database...");
@@ -44,10 +50,12 @@ fn initialize_database(connection: &rusqlite::Connection) -> Result<()> {
               var2_name        VARCHAR(255),
               var3_name        VARCHAR(255),
               var4_name        VARCHAR(255),
+              var5_name        VARCHAR(255),
               var1_value       TEXT,
               var2_value       TEXT,
               var3_value       TEXT,
-              var4_value       TEXT
+              var4_value       TEXT,
+              var5_value       TEXT
          );",
         (), // no parameters needed to create a table.
     )?;
@@ -57,7 +65,7 @@ fn initialize_database(connection: &rusqlite::Connection) -> Result<()> {
 
 fn get_last_database_entry(connection: &rusqlite::Connection) -> Result<Entry> {
     let mut statement = connection.prepare(
-        "SELECT utc_time_seconds, duration_seconds, status, executable, var1_name, var2_name, var3_name, var4_name, var1_value, var2_value, var3_value, var4_value
+        "SELECT utc_time_seconds, duration_seconds, status, executable, var1_name, var2_name, var3_name, var4_name, var5_name, var1_value, var2_value, var3_value, var4_value, var5_value
          FROM records
          ORDER BY utc_time_seconds DESC
          LIMIT 1 ;"
@@ -75,10 +83,12 @@ fn get_last_database_entry(connection: &rusqlite::Connection) -> Result<Entry> {
         last_entry.vars.var2_name = row.get_unwrap::<usize, Option<String>>(INDEX_VAR2_NAME);
         last_entry.vars.var3_name = row.get_unwrap::<usize, Option<String>>(INDEX_VAR3_NAME);
         last_entry.vars.var4_name = row.get_unwrap::<usize, Option<String>>(INDEX_VAR4_NAME);
+        last_entry.vars.var5_name = row.get_unwrap::<usize, Option<String>>(INDEX_VAR5_NAME);
         last_entry.vars.var1_value = row.get_unwrap::<usize, Option<String>>(INDEX_VAR1_VALUE);
         last_entry.vars.var2_value = row.get_unwrap::<usize, Option<String>>(INDEX_VAR2_VALUE);
         last_entry.vars.var3_value = row.get_unwrap::<usize, Option<String>>(INDEX_VAR3_VALUE);
         last_entry.vars.var4_value = row.get_unwrap::<usize, Option<String>>(INDEX_VAR4_VALUE);
+        last_entry.vars.var5_value = row.get_unwrap::<usize, Option<String>>(INDEX_VAR5_VALUE);
     }
     debug!("Last Entry: {:?}", last_entry);
 
@@ -125,14 +135,16 @@ fn update_existing_entry_rows_into_database(
         let var2_name = convert_entry_var_to_sql_string_value(&entry.vars.var2_name);
         let var3_name = convert_entry_var_to_sql_string_value(&entry.vars.var3_name);
         let var4_name = convert_entry_var_to_sql_string_value(&entry.vars.var4_name);
+        let var5_name = convert_entry_var_to_sql_string_value(&entry.vars.var5_name);
 
         let var1_value = convert_entry_var_to_sql_string_value(&entry.vars.var1_value);
         let var2_value = convert_entry_var_to_sql_string_value(&entry.vars.var2_value);
         let var3_value = convert_entry_var_to_sql_string_value(&entry.vars.var3_value);
         let var4_value = convert_entry_var_to_sql_string_value(&entry.vars.var4_value);
+        let var5_value = convert_entry_var_to_sql_string_value(&entry.vars.var5_value);
 
         debug!(
-            "UPDATE Entry [ Time: {}, Duration: {}, Status: {:?}, Executable: {:?}, Var1: {:?} = {:?}, Var2: {:?} = {:?}, Var3: {:?} = {:?}, Var4: {:?} = {:?} ]",
+            "UPDATE Entry [ Time: {}, Duration: {}, Status: {:?}, Executable: {:?}, Var1: {:?} = {:?}, Var2: {:?} = {:?}, Var3: {:?} = {:?}, Var4: {:?} = {:?}, Var5: {:?} = {:?} ]",
             time_formatted,
             duration_formatted,
             entry.status,
@@ -145,6 +157,8 @@ fn update_existing_entry_rows_into_database(
             var3_value,
             var4_name,
             var4_value,
+            var5_name,
+            var5_value,
         );
 
         statement.execute(named_params! {
@@ -186,10 +200,12 @@ fn insert_new_entry_rows_into_database(
                                   var2_name,
                                   var3_name,
                                   var4_name,
+                                  var5_name,
                                   var1_value,
                                   var2_value,
                                   var3_value,
-                                  var4_value)
+                                  var4_value,
+                                  var5_value)
              VALUES (:utc_time_seconds,
                      :duration_seconds,
                      :status,
@@ -198,10 +214,12 @@ fn insert_new_entry_rows_into_database(
                      :var2_name,
                      :var3_name,
                      :var4_name,
+                     :var5_name,
                      :var1_value,
                      :var2_value,
                      :var3_value,
-                     :var4_value)",
+                     :var4_value,
+                     :var5_value)",
     )?;
 
     for entry in new_entries_dedup {
@@ -244,13 +262,15 @@ fn insert_new_entry_rows_into_database(
         let var2_name = convert_entry_var_to_sql_string_value(&entry.vars.var2_name);
         let var3_name = convert_entry_var_to_sql_string_value(&entry.vars.var3_name);
         let var4_name = convert_entry_var_to_sql_string_value(&entry.vars.var4_name);
+        let var5_name = convert_entry_var_to_sql_string_value(&entry.vars.var5_name);
 
         let var1_value = convert_entry_var_to_sql_string_value(&entry.vars.var1_value);
         let var2_value = convert_entry_var_to_sql_string_value(&entry.vars.var2_value);
         let var3_value = convert_entry_var_to_sql_string_value(&entry.vars.var3_value);
         let var4_value = convert_entry_var_to_sql_string_value(&entry.vars.var4_value);
+        let var5_value = convert_entry_var_to_sql_string_value(&entry.vars.var5_value);
 
-        debug!("INSERT Entry [ Time: {}, Duration: {}, Status: {:?}, Executable: {:?}, Var1: {:?} = {:?}, Var2: {:?} = {:?}, Var3: {:?} = {:?}, Var4: {:?} = {:?} ]",
+        debug!("INSERT Entry [ Time: {}, Duration: {}, Status: {:?}, Executable: {:?}, Var1: {:?} = {:?}, Var2: {:?} = {:?}, Var3: {:?} = {:?}, Var4: {:?} = {:?}, Var5: {:?} = {:?} ]",
                time_formatted,
                duration_formatted,
                entry.status,
@@ -263,6 +283,8 @@ fn insert_new_entry_rows_into_database(
                var3_value,
                var4_name,
                var4_value,
+               var5_name,
+               var5_value,
         );
 
         statement.execute(named_params! {
@@ -274,10 +296,12 @@ fn insert_new_entry_rows_into_database(
             ":var2_name": var2_name,
             ":var3_name": var3_name,
             ":var4_name": var4_name,
+            ":var5_name": var5_name,
             ":var1_value": var1_value,
             ":var2_value": var2_value,
             ":var3_value": var3_value,
             ":var4_value": var4_value,
+            ":var5_value": var5_value,
         })?;
     }
 
@@ -383,8 +407,8 @@ impl Storage {
         let mut statement = self.connection.prepare(
             "SELECT utc_time_seconds, duration_seconds, status,
                         executable,
-                        var1_name, var2_name, var3_name, var4_name,
-                        var1_value, var2_value, var3_value, var4_value
+                        var1_name, var2_name, var3_name, var4_name, var5_name,
+                        var1_value, var2_value, var3_value, var4_value, var5_value
                  FROM records
                  WHERE utc_time_seconds > :start_utc_time_seconds
                        AND utc_time_seconds < :end_utc_time_seconds
@@ -409,10 +433,12 @@ impl Storage {
             vars.var2_name = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR2_NAME));
             vars.var3_name = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR3_NAME));
             vars.var4_name = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR4_NAME));
+            vars.var5_name = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR5_NAME));
             vars.var1_value = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR1_VALUE));
             vars.var2_value = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR2_VALUE));
             vars.var3_value = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR3_VALUE));
             vars.var4_value = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR4_VALUE));
+            vars.var5_value = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_VAR5_VALUE));
 
             let entry = Entry::new(utc_time_seconds, duration_seconds, status, vars);
             entries.push(entry);

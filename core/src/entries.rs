@@ -23,10 +23,12 @@ pub struct EntryVariablesList {
     pub var2_name: Option<String>,
     pub var3_name: Option<String>,
     pub var4_name: Option<String>,
+    pub var5_name: Option<String>,
     pub var1_value: Option<String>,
     pub var2_value: Option<String>,
     pub var3_value: Option<String>,
     pub var4_value: Option<String>,
+    pub var5_value: Option<String>,
 }
 
 fn set_variable_from_environ_vars(
@@ -56,10 +58,12 @@ impl EntryVariablesList {
         var2_name: Option<String>,
         var3_name: Option<String>,
         var4_name: Option<String>,
+        var5_name: Option<String>,
         var1_value: Option<String>,
         var2_value: Option<String>,
         var3_value: Option<String>,
         var4_value: Option<String>,
+        var5_value: Option<String>,
     ) -> EntryVariablesList {
         EntryVariablesList {
             executable,
@@ -67,10 +71,12 @@ impl EntryVariablesList {
             var2_name,
             var3_name,
             var4_name,
+            var5_name,
             var1_value,
             var2_value,
             var3_value,
             var4_value,
+            var5_value,
         }
     }
 
@@ -81,10 +87,12 @@ impl EntryVariablesList {
             var2_name: None,
             var3_name: None,
             var4_name: None,
+            var5_name: None,
             var1_value: None,
             var2_value: None,
             var3_value: None,
             var4_value: None,
+            var5_value: None,
         }
     }
 
@@ -93,6 +101,7 @@ impl EntryVariablesList {
         set_variable_from_environ_vars(&self.var2_name, &mut self.var2_value, environ_vars);
         set_variable_from_environ_vars(&self.var3_name, &mut self.var3_value, environ_vars);
         set_variable_from_environ_vars(&self.var4_name, &mut self.var4_value, environ_vars);
+        set_variable_from_environ_vars(&self.var5_name, &mut self.var5_value, environ_vars);
     }
 }
 

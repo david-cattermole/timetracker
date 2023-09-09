@@ -5,6 +5,7 @@ use timetracker_core::format::DateTimeFormat;
 use timetracker_core::format::DurationFormat;
 use timetracker_core::settings::new_core_settings;
 use timetracker_core::settings::new_print_settings;
+use timetracker_core::settings::validate_core_settings;
 use timetracker_core::settings::CoreSettings;
 use timetracker_core::settings::PrintSettings;
 
@@ -70,7 +71,9 @@ impl PrintAppSettings {
             .set_override_option("print.format_datetime", arguments.format_datetime)?
             .set_override_option("print.format_duration", arguments.format_duration)?;
 
-        let settings = builder.build()?;
-        settings.try_deserialize()
+        let settings: Self = builder.build()?.try_deserialize()?;
+        validate_core_settings(&settings.core).unwrap();
+
+        Ok(settings)
     }
 }

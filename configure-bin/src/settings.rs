@@ -4,6 +4,7 @@ use serde_derive::{Deserialize, Serialize};
 use timetracker_core::filesystem::find_existing_configuration_directory_path;
 use timetracker_core::settings::new_core_settings;
 use timetracker_core::settings::new_print_settings;
+use timetracker_core::settings::validate_core_settings;
 use timetracker_core::settings::CoreSettings;
 use timetracker_core::settings::PrintSettings;
 use timetracker_core::settings::DEFAULT_CONFIG_FILE_NAME;
@@ -53,8 +54,10 @@ impl ConfigureAppSettings {
             .set_default("configure.config_dir", default_config_dir)?
             .set_default("configure.config_file_name", DEFAULT_CONFIG_FILE_NAME)?;
 
-        let settings = builder.build()?;
-        settings.try_deserialize()
+        let settings: Self = builder.build()?.try_deserialize()?;
+        validate_core_settings(&settings.core).unwrap();
+
+        Ok(settings)
     }
 }
 
@@ -69,7 +72,9 @@ impl FullConfigurationSettings {
         let mut builder = new_core_settings(None, None, defaults)?;
         builder = new_print_settings(builder)?;
 
-        let settings = builder.build()?;
-        settings.try_deserialize()
+        let settings: Self = builder.build()?.try_deserialize()?;
+        validate_core_settings(&settings.core).unwrap();
+
+        Ok(settings)
     }
 }

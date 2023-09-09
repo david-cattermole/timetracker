@@ -5,10 +5,13 @@ use crate::format::DurationFormat;
 use crate::format::PrintType;
 use crate::format::TimeBlockUnit;
 use crate::format::TimeScale;
+use crate::storage::ENVIRONMENT_VARIABLE_NAMES_MAX_COUNT;
+use anyhow::bail;
 use config::{
     builder::DefaultState, Config, ConfigBuilder, ConfigError, Environment, File, FileFormat,
     Value, ValueKind,
 };
+use log::error;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -86,6 +89,24 @@ pub fn new_core_settings(
     }
 
     Result::Ok(builder)
+}
+
+pub fn validate_core_settings(settings: &CoreSettings) -> Result<(), anyhow::Error> {
+    let envvar_name_count = settings.environment_variables.names.len();
+    if envvar_name_count > ENVIRONMENT_VARIABLE_NAMES_MAX_COUNT {
+        let msg = format!(
+            "Timetracker only supports at most {} environment variables, found {}; {:#?}.",
+            ENVIRONMENT_VARIABLE_NAMES_MAX_COUNT,
+            envvar_name_count,
+            settings.environment_variables.names
+        );
+        // We want a nice use error and date/time, so we
+        // error. 'bail!' doesn't have that.
+        error!("{}", msg);
+        bail!("{}", msg);
+    } else {
+        Result::Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

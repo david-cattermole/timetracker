@@ -63,6 +63,7 @@ fn combine_start_mid_end_lines(
     lines_mid2: &[String],
     lines_mid3: &[String],
     lines_mid4: &[String],
+    lines_mid5: &[String],
     lines_end: &[String],
     middle_string: &str,
     end_string: &str,
@@ -72,6 +73,7 @@ fn combine_start_mid_end_lines(
     let line_mid2_max_width = get_longest_string(lines_mid2);
     let line_mid3_max_width = get_longest_string(lines_mid3);
     let line_mid4_max_width = get_longest_string(lines_mid4);
+    let line_mid5_max_width = get_longest_string(lines_mid5);
 
     let mut lines_parts = Vec::<_>::new();
     for i in 0..lines_start.len() {
@@ -81,23 +83,27 @@ fn combine_start_mid_end_lines(
             lines_mid2[i].clone(),
             lines_mid3[i].clone(),
             lines_mid4[i].clone(),
+            lines_mid5[i].clone(),
             lines_end[i].clone(),
         );
         lines_parts.push(value);
     }
 
-    for (line_start, line_mid1, line_mid2, line_mid3, line_mid4, line_end) in lines_parts {
+    for (line_start, line_mid1, line_mid2, line_mid3, line_mid4, line_mid5, line_end) in lines_parts
+    {
         let start_extra_size = line_start_max_width - line_start.len();
         let mid1_extra_size = line_mid1_max_width - line_mid1.len();
         let mid2_extra_size = line_mid2_max_width - line_mid2.len();
         let mid3_extra_size = line_mid3_max_width - line_mid3.len();
         let mid4_extra_size = line_mid4_max_width - line_mid4.len();
+        let mid5_extra_size = line_mid5_max_width - line_mid5.len();
 
         let mut start_extra = middle_string.to_string();
         let mut mid1_extra = middle_string.to_string();
         let mut mid2_extra = middle_string.to_string();
         let mut mid3_extra = middle_string.to_string();
-        let mut mid4_extra = end_string.to_string();
+        let mut mid4_extra = middle_string.to_string();
+        let mut mid5_extra = end_string.to_string();
 
         for _i in 0..start_extra_size {
             start_extra = format!(" {}", start_extra);
@@ -114,8 +120,11 @@ fn combine_start_mid_end_lines(
         for _i in 0..mid4_extra_size {
             mid4_extra = format!(" {}", mid4_extra);
         }
+        for _i in 0..mid5_extra_size {
+            mid5_extra = format!(" {}", mid5_extra);
+        }
 
-        let line = format!("{line_start}{start_extra}{line_mid1}{mid1_extra}{line_mid2}{mid2_extra}{line_mid3}{mid3_extra}{line_mid4}{mid4_extra}{line_end}");
+        let line = format!("{line_start}{start_extra}{line_mid1}{mid1_extra}{line_mid2}{mid2_extra}{line_mid3}{mid3_extra}{line_mid4}{mid4_extra}{line_mid5}{mid5_extra}{line_end}");
         lines.push(line);
     }
 }
@@ -196,6 +205,7 @@ fn generate_entry_variables_lines(
     lines_mid2: &mut Vec<String>,
     lines_mid3: &mut Vec<String>,
     lines_mid4: &mut Vec<String>,
+    lines_mid5: &mut Vec<String>,
     lines_end: &mut Vec<String>,
     line_prefix: &str,
     _datetime_format: DateTimeFormat,
@@ -236,6 +246,12 @@ fn generate_entry_variables_lines(
                 "".to_string()
             };
 
+            let line_mid5 = if vars.len() > 4 {
+                vars[4].to_string()
+            } else {
+                "".to_string()
+            };
+
             let line_end = duration_text.clone();
 
             lines_start.push(line_start);
@@ -243,6 +259,7 @@ fn generate_entry_variables_lines(
             lines_mid2.push(line_mid2);
             lines_mid3.push(line_mid3);
             lines_mid4.push(line_mid4);
+            lines_mid5.push(line_mid5);
             lines_end.push(line_end);
         }
     }
@@ -281,6 +298,12 @@ fn generate_entry_variables_lines(
             "".to_string()
         };
 
+        let line_mid5 = if vars.len() > 4 {
+            vars[4].to_string()
+        } else {
+            "".to_string()
+        };
+
         let line_end = duration_text;
 
         lines_start.push(line_start);
@@ -288,6 +311,7 @@ fn generate_entry_variables_lines(
         lines_mid2.push(line_mid2);
         lines_mid3.push(line_mid3);
         lines_mid4.push(line_mid4);
+        lines_mid5.push(line_mid5);
         lines_end.push(line_end);
     }
 }
@@ -312,6 +336,7 @@ fn generate_variables_week(
     let mut lines_mid2 = Vec::new();
     let mut lines_mid3 = Vec::new();
     let mut lines_mid4 = Vec::new();
+    let mut lines_mid5 = Vec::new();
     let mut lines_end = Vec::new();
 
     // Group entries by variable name and print details.
@@ -322,6 +347,7 @@ fn generate_variables_week(
         &mut lines_mid2,
         &mut lines_mid3,
         &mut lines_mid4,
+        &mut lines_mid5,
         &mut lines_end,
         line_prefix,
         datetime_format,
@@ -338,6 +364,7 @@ fn generate_variables_week(
         &lines_mid2,
         &lines_mid3,
         &lines_mid4,
+        &lines_mid5,
         &lines_end,
         &middle_string,
         &end_string,
@@ -382,6 +409,7 @@ fn generate_variables_weekday(
         let mut lines_mid2 = Vec::new();
         let mut lines_mid3 = Vec::new();
         let mut lines_mid4 = Vec::new();
+        let mut lines_mid5 = Vec::new();
         let mut lines_end = Vec::new();
 
         let line_indent2 = format!("{} ", line_prefix);
@@ -392,6 +420,7 @@ fn generate_variables_weekday(
             &mut lines_mid2,
             &mut lines_mid3,
             &mut lines_mid4,
+            &mut lines_mid5,
             &mut lines_end,
             &line_indent2,
             datetime_format,
@@ -408,6 +437,7 @@ fn generate_variables_weekday(
             &lines_mid2,
             &lines_mid3,
             &lines_mid4,
+            &lines_mid5,
             &lines_end,
             &middle_string,
             &end_string,

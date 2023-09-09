@@ -239,6 +239,9 @@ fn start_recording(
         if name_count > 3 {
             env_var_list.var4_name = Some(settings.core.environment_variables.names[3].clone());
         }
+        if name_count > 4 {
+            env_var_list.var5_name = Some(settings.core.environment_variables.names[4].clone());
+        }
 
         let process_id = linux_x11::get_active_window_process_id_from_x11().unwrap();
         debug!("Process ID: {:?}", process_id);
