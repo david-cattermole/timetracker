@@ -1190,6 +1190,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "timetracker-dump"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "colored",
+ "config",
+ "dirs 4.0.0",
+ "env_logger",
+ "log",
+ "serde",
+ "serde_derive",
+ "timetracker-core",
+ "timetracker-print-lib",
+]
+
+[[package]]
 name = "timetracker-print"
 version = "0.3.0"
 dependencies = [

@@ -8,6 +8,7 @@ authors = ["David Cattermole"]
 members = [
     "configure-bin",
     "core",
+    "dump-bin",
     "print-bin",
     "print-lib",
     "recorder-bin",
