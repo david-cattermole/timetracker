@@ -100,7 +100,7 @@ pub fn validate_core_settings(settings: &CoreSettings) -> Result<(), anyhow::Err
             envvar_name_count,
             settings.environment_variables.names
         );
-        // We want a nice use error and date/time, so we
+        // We want a nice user error and date/time, so we
         // error. 'bail!' doesn't have that.
         error!("{}", msg);
         bail!("{}", msg);
