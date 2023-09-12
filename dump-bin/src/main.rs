@@ -4,6 +4,7 @@ use anyhow::bail;
 use anyhow::Result;
 use clap::Parser;
 use log::debug;
+use std::io::prelude::*;
 use std::time::SystemTime;
 use timetracker_core::filesystem::get_database_file_path;
 use timetracker_core::settings::RECORD_INTERVAL_SECONDS;
@@ -15,7 +16,20 @@ mod settings;
 
 // CSV Spec: Each record is located on a separate line,
 // delimited by a line break (CRLF).
-static LINE_END: &str = "\r\n";
+static LINE_END: &[u8] = "\r\n".as_bytes();
+
+// The CSV File Format header is described here:
+// https://www.rfc-editor.org/rfc/rfc4180#section-2
+static HEADER_LINE: &[u8] = concat!(
+    "utc_time_seconds,duration_seconds,",
+    "status,executable,",
+    "var1_name,var1_value,",
+    "var2_name,var2_value,",
+    "var3_name,var3_value,",
+    "var4_name,var4_value,",
+    "var5_name,var5_value",
+)
+.as_bytes();
 
 fn convert_to_csv_string_value(entry_var_name: &Option<String>) -> String {
     match &entry_var_name {
@@ -117,23 +131,28 @@ fn main() -> Result<()> {
     dump_database(&args, &settings, &mut lines)?;
 
     if !lines.is_empty() {
-        // The CSV File Format header is described here:
-        // https://www.rfc-editor.org/rfc/rfc4180#section-2
-        print!(
-            "{}{}",
-            concat!(
-                "utc_time_seconds,duration_seconds,",
-                "status,executable,",
-                "var1_name,var1_value,",
-                "var2_name,var2_value,",
-                "var3_name,var3_value,",
-                "var4_name,var4_value,",
-                "var5_name,var5_value",
-            ),
-            LINE_END
-        );
-        for line in &lines {
-            print!("{}{}", line, LINE_END);
+        match args.output_file {
+            Some(file_path) => {
+                let f = std::fs::File::create(file_path)?;
+                let mut writer = std::io::BufWriter::new(f);
+                writer.write(HEADER_LINE)?;
+                writer.write(LINE_END)?;
+                for line in &lines {
+                    writer.write(line.as_bytes())?;
+                    writer.write(LINE_END)?;
+                }
+                writer.flush()?;
+            }
+            None => {
+                let mut stdout = std::io::stdout().lock();
+                stdout.write(HEADER_LINE)?;
+                stdout.write(LINE_END)?;
+                for line in &lines {
+                    stdout.write(line.as_bytes())?;
+                    stdout.write(LINE_END)?;
+                }
+                stdout.flush()?;
+            }
         }
     }
 

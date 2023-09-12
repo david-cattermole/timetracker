@@ -20,6 +20,10 @@ pub struct CommandArguments {
     #[clap(short = 'w', long, value_parser, default_value_t = 0)]
     pub relative_week: i32,
 
+    /// Output file path.
+    #[clap(short = 'o', long, value_parser)]
+    pub output_file: Option<String>,
+
     /// Override the directory to search for the database file.
     #[clap(long, value_parser)]
     pub database_dir: Option<String>,
