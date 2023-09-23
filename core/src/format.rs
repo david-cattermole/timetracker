@@ -361,7 +361,7 @@ mod tests {
 
     #[test]
     fn test_format_date_iso_1() {
-        let datetime = chrono::DateTime::<chrono::Utc>::from_utc(
+        let datetime = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
             chrono::NaiveDate::from_ymd_opt(2016, 7, 8)
                 .unwrap()
                 .and_hms_opt(9, 10, 11)
@@ -374,7 +374,7 @@ mod tests {
 
     #[test]
     fn test_format_date_month_day_year_usa_1() {
-        let datetime = chrono::DateTime::<chrono::Utc>::from_utc(
+        let datetime = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
             chrono::NaiveDate::from_ymd_opt(2016, 7, 8)
                 .unwrap()
                 .and_hms_opt(9, 10, 11)
@@ -387,7 +387,7 @@ mod tests {
 
     #[test]
     fn test_format_datetime_iso_1() {
-        let datetime = chrono::DateTime::<chrono::Utc>::from_utc(
+        let datetime = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
             chrono::NaiveDate::from_ymd_opt(2016, 7, 8)
                 .unwrap()
                 .and_hms_opt(9, 10, 11)
@@ -400,7 +400,7 @@ mod tests {
 
     #[test]
     fn test_format_datetime_month_day_year_usa_1() {
-        let datetime = chrono::DateTime::<chrono::Utc>::from_utc(
+        let datetime = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
             chrono::NaiveDate::from_ymd_opt(2016, 7, 8)
                 .unwrap()
                 .and_hms_opt(9, 10, 11)
