@@ -1,7 +1,8 @@
 # To create and run the docker container in PowerShell or Bash:
 #
-# $ docker build --file Dockerfile_centos7 -t timetracker-linux-centos7-build .
-# $ docker run --rm --interactive --volume "${PWD}:/timetracker" --tty timetracker-linux-centos7-build
+# $ sudo systemctl start docker  # If docker engine isn't already started.
+# $ sudo docker build --file Dockerfile_centos7 -t timetracker-linux-centos7-build .
+# $ sudo docker run --rm --interactive --volume "${PWD}:/timetracker" --tty timetracker-linux-centos7-build
 #
 # Then build the project:
 #
