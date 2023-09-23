@@ -87,7 +87,7 @@ pub fn get_weekdays_datetime_local(
 }
 
 pub fn utc_seconds_to_datetime_local(utc_time_seconds: u64) -> chrono::DateTime<chrono::Local> {
-    chrono::DateTime::<chrono::Utc>::from_utc(
+    chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
         chrono::NaiveDateTime::from_timestamp_opt(utc_time_seconds.try_into().unwrap(), 0).unwrap(),
         chrono::Utc,
     )

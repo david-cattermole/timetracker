@@ -105,7 +105,7 @@ fn update_existing_entry_rows_into_database(
              WHERE utc_time_seconds = :utc_time_seconds ;",
     )?;
     for entry in existing_entries_dedup {
-        let datetime = chrono::DateTime::<chrono::Utc>::from_utc(
+        let datetime = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
             chrono::NaiveDateTime::from_timestamp_opt(
                 entry.utc_time_seconds.try_into().unwrap(),
                 0,
@@ -223,7 +223,7 @@ fn insert_new_entry_rows_into_database(
     )?;
 
     for entry in new_entries_dedup {
-        let datetime = chrono::DateTime::<chrono::Utc>::from_utc(
+        let datetime = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
             chrono::NaiveDateTime::from_timestamp_opt(
                 entry.utc_time_seconds.try_into().unwrap(),
                 0,
