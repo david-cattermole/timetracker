@@ -51,6 +51,7 @@ pub fn combine_variable_values(entry: &Entry, variables: &[Variable]) -> String 
                 let var2_name = option_string_to_string(&entry.vars.var2_name);
                 let var3_name = option_string_to_string(&entry.vars.var3_name);
                 let var4_name = option_string_to_string(&entry.vars.var4_name);
+                let var5_name = option_string_to_string(&entry.vars.var5_name);
 
                 if *var_name == var1_name {
                     option_string_to_string(&entry.vars.var1_value)
@@ -60,6 +61,8 @@ pub fn combine_variable_values(entry: &Entry, variables: &[Variable]) -> String 
                     option_string_to_string(&entry.vars.var3_value)
                 } else if *var_name == var4_name {
                     option_string_to_string(&entry.vars.var4_value)
+                } else if *var_name == var5_name {
+                    option_string_to_string(&entry.vars.var5_value)
                 } else {
                     "".to_string()
                 }
@@ -92,6 +95,7 @@ pub fn multi_variable_values(entry: &Entry, variables: &[Variable]) -> Vec<Strin
                 let var2_name = option_string_to_string(&entry.vars.var2_name);
                 let var3_name = option_string_to_string(&entry.vars.var3_name);
                 let var4_name = option_string_to_string(&entry.vars.var4_name);
+                let var5_name = option_string_to_string(&entry.vars.var5_name);
 
                 if *var_name == var1_name {
                     option_string_to_string(&entry.vars.var1_value)
@@ -101,6 +105,8 @@ pub fn multi_variable_values(entry: &Entry, variables: &[Variable]) -> Vec<Strin
                     option_string_to_string(&entry.vars.var3_value)
                 } else if *var_name == var4_name {
                     option_string_to_string(&entry.vars.var4_value)
+                } else if *var_name == var5_name {
+                    option_string_to_string(&entry.vars.var5_value)
                 } else {
                     "".to_string()
                 }
