@@ -51,6 +51,25 @@ $ cargo build --release
 Timetracker (currently) only works on Linux and requires the X11 and
 XScreenSaver (Xss) libraries to be installed on the running computer.
 
+# Packaging For Release
+
+The Timetracker binaries can be packaged up in a .zip file, for users
+to easily download and install.
+
+To build Timetracker (with maximum performance), use the Rust package
+manager Cargo:
+```bash
+$ cd /path/to/timetracker
+$ cargo build --all --release
+```
+
+Now create a ZIP file with the binaries:
+```bash
+$ cd /path/to/timetracker
+$ cd target/release/  # assumes the default target directory.
+$ zip ../../timetracker-v0.0.0.zip timetracker-dump timetracker-configure timetracker-print timetracker-recorder
+```
+
 ## Testing
 
 Run the Timetracker test suite with 'cargo test':

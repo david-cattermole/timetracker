@@ -9,10 +9,15 @@
 # $ cargo test
 # $ cargo build --all --release
 #
+# To package the resulting binaries for release to users:
+# $ cd target/release/
+# $ zip timetracker-v0.0.0.zip timetracker-print timetracker-recorder timetracker-dump timetracker-configure
+#
 
 FROM centos:7
 
 # GCC (C++ compiler), Gnome Toolkit (GTK) and X11 dependencies.
+# 'zip' is installed for packaging.
 RUN yum install --assumeyes \
        gcc \
        glib2 \
@@ -24,7 +29,8 @@ RUN yum install --assumeyes \
        libX11 \
        libX11-devel \
        libXScrnSaver \
-       libXScrnSaver-devel
+       libXScrnSaver-devel \
+       zip
 
 # Install latest stable Rust with 'rustup'.
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
