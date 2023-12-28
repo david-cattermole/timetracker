@@ -16,10 +16,10 @@ project. Go to the Rust
 information.
 
 Once Rust (and the package manager Cargo) is installed, run the
-following commands:
+following commands (change "--tag v0.3.2" as needed):
 ```bash
 # Install timetracker binaries into Rust's default binaries directory (${HOME}/.cargo/bin).
-$ cargo install --git https://github.com/david-cattermole/timetracker.git --tag v0.1.0
+$ cargo install --git https://github.com/david-cattermole/timetracker.git --tag v0.3.2 timetracker-configure timetracker-dump timetracker-print timetracker-recorder
 ```
 Done! You can now type 'timetracker-recorder start' to start
 Timetracker.
