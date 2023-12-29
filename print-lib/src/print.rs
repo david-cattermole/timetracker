@@ -185,6 +185,10 @@ fn generate_summary_weekday(
         let end_of_time = weekday_end_datetime.timestamp() as u64;
         let entries = storage.read_entries(start_of_time, end_of_time)?;
 
+        if entries.is_empty() {
+            continue;
+        }
+
         let total_duration = sum_entry_duration(&entries, EntryStatus::Active);
         week_total_duration = week_total_duration + total_duration;
 
