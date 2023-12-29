@@ -974,7 +974,7 @@ pub fn generate_preset_lines(
     match print_type {
         PrintType::Summary => match time_scale {
             TimeScale::Week => {
-                output_lines.push("Week:".to_string());
+                output_lines.push("Week Summary:".to_string());
                 generate_summary_week(
                     storage,
                     output_lines,
@@ -986,7 +986,7 @@ pub fn generate_preset_lines(
                 output_lines.push("".to_string());
             }
             TimeScale::Weekday => {
-                let heading_text = "Weekdays";
+                let heading_text = "Weekdays Summary";
                 generate_summary_weekday(
                     storage,
                     output_lines,
