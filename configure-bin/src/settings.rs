@@ -10,7 +10,7 @@ use timetracker_core::settings::PrintSettings;
 use timetracker_core::settings::DEFAULT_CONFIG_FILE_NAME;
 
 #[derive(Parser, Debug)]
-#[clap(author = "David Cattermole, Copyright 2023", version, about)]
+#[clap(author = "David Cattermole, Copyright 2023-2024", version, about)]
 pub struct CommandArguments {
     /// If true, ignore any user configuration files and return
     /// default configuration options.

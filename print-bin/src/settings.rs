@@ -10,7 +10,7 @@ use timetracker_core::settings::CoreSettings;
 use timetracker_core::settings::PrintSettings;
 
 #[derive(Parser, Debug)]
-#[clap(author = "David Cattermole, Copyright 2023", version, about)]
+#[clap(author = "David Cattermole, Copyright 2023-2024", version, about)]
 pub struct CommandArguments {
     /// Return the last week's results, shortcut for
     /// '--relative-week=-1'.

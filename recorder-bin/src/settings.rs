@@ -7,7 +7,7 @@ use timetracker_core::settings::validate_core_settings;
 use timetracker_core::settings::CoreSettings;
 
 #[derive(Parser, Debug)]
-#[clap(author = "David Cattermole, Copyright 2023", version, about)]
+#[clap(author = "David Cattermole, Copyright 2023-2024", version, about)]
 #[clap(propagate_version = true)]
 pub struct CommandArguments {
     #[clap(subcommand)]
