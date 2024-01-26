@@ -10,7 +10,7 @@ use timetracker_core::format::PrintType;
 use timetracker_core::format::TimeBlockUnit;
 use timetracker_core::format::TimeScale;
 use timetracker_core::settings::PrintPresetSettings;
-use timetracker_core::storage::Storage;
+use timetracker_core::storage::Entries;
 
 pub fn override_preset_value<T>(new_value: Option<T>, old_value: Option<T>) -> Option<T> {
     match new_value {
@@ -87,10 +87,10 @@ pub fn create_presets(
 
 pub fn generate_presets(
     presets: &Vec<PrintPresetSettings>,
-    storage: &mut Storage,
-    week_datetime_pair: DateTimeLocalPair,
+    entries: &Entries,
 ) -> Result<Vec<String>> {
     let color = colored::Color::Green;
+    let week_datetime_pair: DateTimeLocalPair = (entries.start_datetime(), entries.end_datetime());
 
     let mut lines = Vec::new();
     for preset in presets {
@@ -115,7 +115,7 @@ pub fn generate_presets(
         };
 
         generate_preset_lines(
-            storage,
+            entries,
             &mut lines,
             week_datetime_pair,
             print_type,

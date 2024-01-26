@@ -24,7 +24,7 @@ use timetracker_core::format::DurationFormat;
 use timetracker_core::format::PrintType;
 use timetracker_core::format::TimeBlockUnit;
 use timetracker_core::format::TimeScale;
-use timetracker_core::storage::Storage;
+use timetracker_core::storage::Entries;
 
 const HEADING_TOTAL_TEXT_START: &str = "[total ";
 const HEADING_TOTAL_TEXT_END: &str = "]";
@@ -134,7 +134,7 @@ fn combine_start_mid_end_lines(
 }
 
 fn generate_summary_week(
-    storage: &mut Storage,
+    entries: &Entries,
     lines: &mut Vec<String>,
     line_prefix: &str,
     week_datetime_pair: DateTimeLocalPair,
@@ -142,10 +142,7 @@ fn generate_summary_week(
     duration_format: DurationFormat,
 ) -> Result<()> {
     let (week_start_datetime, week_end_datetime) = week_datetime_pair;
-
-    let week_start_of_time = week_start_datetime.timestamp() as u64;
-    let week_end_of_time = week_end_datetime.timestamp() as u64;
-    let week_entries = storage.read_entries(week_start_of_time, week_end_of_time)?;
+    let week_entries = entries.datetime_range_entries(week_start_datetime, week_end_datetime);
 
     let week_total_duration = sum_entry_duration(&week_entries, EntryStatus::Active);
     let week_start_date_text = format_date(week_start_datetime, datetime_format);
@@ -161,7 +158,7 @@ fn generate_summary_week(
 }
 
 fn generate_summary_weekday(
-    storage: &mut Storage,
+    entries: &Entries,
     lines: &mut Vec<String>,
     line_prefix: &str,
     line_heading: &str,
@@ -180,16 +177,14 @@ fn generate_summary_weekday(
         get_weekdays_datetime_local(week_start_datetime, week_end_datetime);
     for (weekday, weekdays_datetime_pair) in weekdays_datetime_pairs {
         let (weekday_start_datetime, weekday_end_datetime) = weekdays_datetime_pair;
+        let weekday_entries =
+            entries.datetime_range_entries(weekday_start_datetime, weekday_end_datetime);
 
-        let start_of_time = weekday_start_datetime.timestamp() as u64;
-        let end_of_time = weekday_end_datetime.timestamp() as u64;
-        let entries = storage.read_entries(start_of_time, end_of_time)?;
-
-        if entries.is_empty() {
+        if weekday_entries.is_empty() {
             continue;
         }
 
-        let total_duration = sum_entry_duration(&entries, EntryStatus::Active);
+        let total_duration = sum_entry_duration(&weekday_entries, EntryStatus::Active);
         week_total_duration = week_total_duration + total_duration;
 
         let total_duration_text = format_duration(total_duration, duration_format);
@@ -336,7 +331,7 @@ fn generate_entry_variables_lines(
 }
 
 fn generate_variables_week(
-    storage: &mut Storage,
+    entries: &Entries,
     lines: &mut Vec<String>,
     line_prefix: &str,
     line_heading: &str,
@@ -346,10 +341,7 @@ fn generate_variables_week(
     variables: &[Variable],
 ) -> Result<()> {
     let (week_start_datetime, week_end_datetime) = week_datetime_pair;
-
-    let week_start_of_time = week_start_datetime.timestamp() as u64;
-    let week_end_of_time = week_end_datetime.timestamp() as u64;
-    let week_entries = storage.read_entries(week_start_of_time, week_end_of_time)?;
+    let week_entries = entries.datetime_range_entries(week_start_datetime, week_end_datetime);
     let week_total_duration = sum_entry_duration(&week_entries, EntryStatus::Active);
 
     let mut lines_start = Vec::new();
@@ -399,7 +391,7 @@ fn generate_variables_week(
 }
 
 fn generate_variables_weekday(
-    storage: &mut Storage,
+    entries: &Entries,
     lines: &mut Vec<String>,
     line_prefix: &str,
     week_datetime_pair: DateTimeLocalPair,
@@ -413,16 +405,14 @@ fn generate_variables_weekday(
         get_weekdays_datetime_local(week_start_datetime, week_end_datetime);
     for (weekday, weekdays_datetime_pair) in weekdays_datetime_pairs {
         let (weekday_start_datetime, weekday_end_datetime) = weekdays_datetime_pair;
+        let weekday_entries =
+            entries.datetime_range_entries(weekday_start_datetime, weekday_end_datetime);
 
-        let start_of_time = weekday_start_datetime.timestamp() as u64;
-        let end_of_time = weekday_end_datetime.timestamp() as u64;
-        let entries = storage.read_entries(start_of_time, end_of_time)?;
-
-        if entries.is_empty() {
+        if weekday_entries.is_empty() {
             continue;
         }
 
-        let total_duration = sum_entry_duration(&entries, EntryStatus::Active);
+        let total_duration = sum_entry_duration(&weekday_entries, EntryStatus::Active);
         let total_duration_text = format_duration(total_duration, duration_format);
         let line = format!(
             "{}{} {} {}{}{}",
@@ -446,7 +436,7 @@ fn generate_variables_weekday(
 
         let line_indent2 = format!("{} ", line_prefix);
         generate_entry_variables_lines(
-            &entries,
+            &weekday_entries,
             &mut lines_start,
             &mut lines_mid1,
             &mut lines_mid2,
@@ -526,7 +516,7 @@ fn generate_entry_software_lines(
 }
 
 fn generate_software_week(
-    storage: &mut Storage,
+    entries: &Entries,
     lines: &mut Vec<String>,
     line_prefix: &str,
     line_heading: &str,
@@ -535,10 +525,7 @@ fn generate_software_week(
     duration_format: DurationFormat,
 ) -> Result<()> {
     let (week_start_datetime, week_end_datetime) = week_datetime_pair;
-
-    let week_start_of_time = week_start_datetime.timestamp() as u64;
-    let week_end_of_time = week_end_datetime.timestamp() as u64;
-    let week_entries = storage.read_entries(week_start_of_time, week_end_of_time)?;
+    let week_entries = entries.datetime_range_entries(week_start_datetime, week_end_datetime);
 
     let week_total_duration = sum_entry_duration(&week_entries, EntryStatus::Active);
     let week_total_duration_text = format_duration(week_total_duration, duration_format);
@@ -560,7 +547,7 @@ fn generate_software_week(
 }
 
 fn generate_software_weekday(
-    storage: &mut Storage,
+    entries: &Entries,
     lines: &mut Vec<String>,
     line_prefix: &str,
     week_datetime_pair: DateTimeLocalPair,
@@ -574,10 +561,8 @@ fn generate_software_weekday(
 
     for (weekday, weekday_datetime_pair) in weekday_datetime_pairs {
         let (weekday_start_datetime, weekday_end_datetime) = weekday_datetime_pair;
-
-        let weekday_start_of_time = weekday_start_datetime.timestamp() as u64;
-        let weekday_end_of_time = weekday_end_datetime.timestamp() as u64;
-        let weekday_entries = storage.read_entries(weekday_start_of_time, weekday_end_of_time)?;
+        let weekday_entries =
+            entries.datetime_range_entries(weekday_start_datetime, weekday_end_datetime);
 
         if weekday_entries.is_empty() {
             continue;
@@ -675,7 +660,7 @@ fn generate_entry_activity_lines(
 }
 
 fn generate_activity_weekday(
-    storage: &mut Storage,
+    entries: &Entries,
     lines: &mut Vec<String>,
     line_prefix: &str,
     week_datetime_pair: DateTimeLocalPair,
@@ -692,10 +677,8 @@ fn generate_activity_weekday(
 
     for (weekday, weekday_datetime_pair) in weekday_datetime_pairs {
         let (weekday_start_datetime, weekday_end_datetime) = weekday_datetime_pair;
-
-        let weekday_start_of_time = weekday_start_datetime.timestamp() as u64;
-        let weekday_end_of_time = weekday_end_datetime.timestamp() as u64;
-        let weekday_entries = storage.read_entries(weekday_start_of_time, weekday_end_of_time)?;
+        let weekday_entries =
+            entries.datetime_range_entries(weekday_start_datetime, weekday_end_datetime);
 
         if weekday_entries.is_empty() {
             continue;
@@ -885,7 +868,7 @@ fn generate_entry_day_activity_lines(
 }
 
 fn generate_activity_week(
-    storage: &mut Storage,
+    entries: &Entries,
     lines: &mut Vec<String>,
     line_prefix: &str,
     line_heading: &str,
@@ -906,10 +889,8 @@ fn generate_activity_week(
 
     for (weekday, weekday_datetime_pair) in weekday_datetime_pairs {
         let (weekday_start_datetime, weekday_end_datetime) = weekday_datetime_pair;
-
-        let weekday_start_of_time = weekday_start_datetime.timestamp() as u64;
-        let weekday_end_of_time = weekday_end_datetime.timestamp() as u64;
-        let weekday_entries = storage.read_entries(weekday_start_of_time, weekday_end_of_time)?;
+        let weekday_entries =
+            entries.datetime_range_entries(weekday_start_datetime, weekday_end_datetime);
 
         if weekday_entries.is_empty() {
             continue;
@@ -961,7 +942,7 @@ pub fn get_relative_week_start_end(relative_week_index: i32) -> Result<DateTimeL
 
 /// Prints the time entries with the various settings given.
 pub fn generate_preset_lines(
-    storage: &mut Storage,
+    entries: &Entries,
     output_lines: &mut Vec<String>,
     start_end_datetime_pair: DateTimeLocalPair,
     print_type: PrintType,
@@ -980,7 +961,7 @@ pub fn generate_preset_lines(
             TimeScale::Week => {
                 output_lines.push("Week Summary:".to_string());
                 generate_summary_week(
-                    storage,
+                    entries,
                     output_lines,
                     line_indent,
                     start_end_datetime_pair,
@@ -992,7 +973,7 @@ pub fn generate_preset_lines(
             TimeScale::Weekday => {
                 let heading_text = "Weekdays Summary";
                 generate_summary_weekday(
-                    storage,
+                    entries,
                     output_lines,
                     line_indent,
                     heading_text,
@@ -1010,7 +991,7 @@ pub fn generate_preset_lines(
                     // Duration of user for the week.
                     let heading_text = "Week Activity";
                     generate_activity_week(
-                        storage,
+                        entries,
                         output_lines,
                         line_indent,
                         &heading_text,
@@ -1027,7 +1008,7 @@ pub fn generate_preset_lines(
                 TimeScale::Weekday => {
                     output_lines.push("Weekday Activity:".to_string());
                     generate_activity_weekday(
-                        storage,
+                        entries,
                         output_lines,
                         line_indent,
                         start_end_datetime_pair,
@@ -1048,7 +1029,7 @@ pub fn generate_preset_lines(
                 let heading_text = format!("Week Variables ({})", names).to_string();
 
                 generate_variables_week(
-                    storage,
+                    entries,
                     output_lines,
                     line_indent,
                     &heading_text,
@@ -1064,7 +1045,7 @@ pub fn generate_preset_lines(
                 output_lines.push(format!("Weekday Variables ({}):", names));
 
                 generate_variables_weekday(
-                    storage,
+                    entries,
                     output_lines,
                     line_indent,
                     start_end_datetime_pair,
@@ -1082,7 +1063,7 @@ pub fn generate_preset_lines(
                 let heading_text = format!("Week Software ({})", names).to_string();
 
                 generate_software_week(
-                    storage,
+                    entries,
                     output_lines,
                     line_indent,
                     &heading_text,
@@ -1097,7 +1078,7 @@ pub fn generate_preset_lines(
                 output_lines.push(format!("Weekday Software ({}):", names));
 
                 generate_software_weekday(
-                    storage,
+                    entries,
                     output_lines,
                     line_indent,
                     start_end_datetime_pair,

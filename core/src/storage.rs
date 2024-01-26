@@ -95,6 +95,14 @@ fn get_last_database_entry(connection: &rusqlite::Connection) -> Result<Entry> {
     Ok(last_entry)
 }
 
+fn utc_seconds_to_datetime_local(utc_time_seconds: u64) -> chrono::DateTime<chrono::Local> {
+    chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
+        chrono::NaiveDateTime::from_timestamp_opt(utc_time_seconds.try_into().unwrap(), 0).unwrap(),
+        chrono::Utc,
+    )
+    .with_timezone(&chrono::Local)
+}
+
 fn update_existing_entry_rows_into_database(
     connection: &rusqlite::Connection,
     existing_entries_dedup: &Vec<Entry>,
@@ -105,15 +113,7 @@ fn update_existing_entry_rows_into_database(
              WHERE utc_time_seconds = :utc_time_seconds ;",
     )?;
     for entry in existing_entries_dedup {
-        let datetime = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
-            chrono::NaiveDateTime::from_timestamp_opt(
-                entry.utc_time_seconds.try_into().unwrap(),
-                0,
-            )
-            .unwrap(),
-            chrono::Utc,
-        )
-        .with_timezone(&chrono::Local);
+        let datetime = utc_seconds_to_datetime_local(entry.utc_time_seconds);
 
         let duration = chrono::Duration::seconds(entry.duration_seconds.try_into().unwrap());
         let duration_formatted = crate::format::format_duration(
@@ -308,6 +308,105 @@ fn insert_new_entry_rows_into_database(
     Ok(())
 }
 
+// Store read-only entries.
+//
+// Allows filtering the full list of entries by a sub-set of
+// times/dates (without having to fetch data from teh database).
+#[derive(Debug)]
+pub struct Entries {
+    start_datetime: chrono::DateTime<chrono::Local>,
+    end_datetime: chrono::DateTime<chrono::Local>,
+    entries: Vec<Entry>,
+}
+
+impl Entries {
+    pub fn builder() -> EntriesBuilder {
+        EntriesBuilder::default()
+    }
+
+    pub fn start_datetime(&self) -> chrono::DateTime<chrono::Local> {
+        self.start_datetime
+    }
+
+    pub fn end_datetime(&self) -> chrono::DateTime<chrono::Local> {
+        self.end_datetime
+    }
+
+    // Get a slice of the entries for the datetime range given.
+    pub fn datetime_range_entries(
+        &self,
+        start_datetime: chrono::DateTime<chrono::Local>,
+        end_datetime: chrono::DateTime<chrono::Local>,
+    ) -> &[Entry] {
+        let start_of_time = start_datetime.timestamp() as u64;
+        let end_of_time = end_datetime.timestamp() as u64;
+
+        let mut start_index = 0;
+        let mut end_index = 0;
+        for (i, entry) in self.entries.iter().enumerate() {
+            if (entry.utc_time_seconds > start_of_time) && (entry.utc_time_seconds < end_of_time) {
+                start_index = std::cmp::min(start_index, i);
+                end_index = std::cmp::max(end_index, i);
+            }
+        }
+
+        &self.entries[start_index..end_index]
+    }
+
+    pub fn is_datetime_range_empty(
+        &self,
+        start_datetime: chrono::DateTime<chrono::Local>,
+        end_datetime: chrono::DateTime<chrono::Local>,
+    ) -> bool {
+        self.datetime_range_entries(start_datetime, end_datetime)
+            .is_empty()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+}
+
+#[derive(Default)]
+pub struct EntriesBuilder {
+    start_datetime: chrono::DateTime<chrono::Local>,
+    end_datetime: chrono::DateTime<chrono::Local>,
+    entries: Vec<Entry>,
+}
+
+impl EntriesBuilder {
+    pub fn new() -> EntriesBuilder {
+        EntriesBuilder {
+            start_datetime: chrono::DateTime::<chrono::Local>::MIN_UTC.into(),
+            end_datetime: chrono::DateTime::<chrono::Local>::MAX_UTC.into(),
+            entries: Vec::new(),
+        }
+    }
+
+    pub fn start_datetime(mut self, value: chrono::DateTime<chrono::Local>) -> EntriesBuilder {
+        self.start_datetime = value;
+        self
+    }
+
+    pub fn end_datetime(mut self, value: chrono::DateTime<chrono::Local>) -> EntriesBuilder {
+        self.end_datetime = value;
+        self
+    }
+
+    pub fn entries(mut self, entries: Vec<Entry>) -> EntriesBuilder {
+        self.entries = entries;
+        self
+    }
+
+    pub fn build(self) -> Entries {
+        Entries {
+            start_datetime: self.start_datetime,
+            end_datetime: self.end_datetime,
+            entries: self.entries,
+        }
+    }
+}
+
 pub struct Storage {
     connection: rusqlite::Connection,
     entries: Vec<Entry>,
@@ -403,7 +502,7 @@ impl Storage {
         &mut self,
         start_utc_time_seconds: u64,
         end_utc_time_seconds: u64,
-    ) -> Result<Vec<Entry>> {
+    ) -> Result<Entries> {
         let mut statement = self.connection.prepare(
             "SELECT utc_time_seconds, duration_seconds, status,
                         executable,
@@ -442,7 +541,12 @@ impl Storage {
             let entry = Entry::new(utc_time_seconds, duration_seconds, status, vars);
             entries.push(entry);
         }
-        Ok(entries)
+
+        Ok(Entries::builder()
+            .start_datetime(utc_seconds_to_datetime_local(start_utc_time_seconds))
+            .end_datetime(utc_seconds_to_datetime_local(end_utc_time_seconds))
+            .entries(entries)
+            .build())
     }
 
     pub fn write_entries(&mut self) -> Result<()> {

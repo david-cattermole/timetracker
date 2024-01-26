@@ -17,6 +17,7 @@ use timetracker_print_lib::print::get_relative_week_start_end;
 mod settings;
 
 fn print_presets(args: &CommandArguments, settings: &PrintAppSettings) -> Result<()> {
+    let now = SystemTime::now();
     let database_file_path = get_database_file_path(
         &settings.core.database_dir,
         &settings.core.database_file_name,
@@ -32,11 +33,15 @@ fn print_presets(args: &CommandArguments, settings: &PrintAppSettings) -> Result
             &settings.core.database_file_name, &settings.core.database_dir
         );
     }
+    let duration = now.elapsed()?.as_secs_f32();
+    debug!("Time taken (find database): {:.4} seconds", duration);
 
     let mut storage = Storage::open_as_read_only(
         &database_file_path.expect("Database file path should be valid"),
         RECORD_INTERVAL_SECONDS,
     )?;
+    let duration = now.elapsed()?.as_secs_f32();
+    debug!("Time taken (open database): {:.4} seconds", duration);
 
     let relative_week = if args.last_week {
         -1
@@ -56,6 +61,7 @@ fn print_presets(args: &CommandArguments, settings: &PrintAppSettings) -> Result
     );
     println!("");
 
+    let now = SystemTime::now();
     let (presets, missing_preset_names) = create_presets(
         settings.print.time_scale,
         settings.print.format_datetime,
@@ -66,11 +72,28 @@ fn print_presets(args: &CommandArguments, settings: &PrintAppSettings) -> Result
         &settings.print.display_presets,
         &settings.print.presets,
     )?;
+    let duration = now.elapsed()?.as_secs_f32();
+    debug!("Time taken (create presets): {:.4} seconds", duration);
 
-    let lines = generate_presets(&presets, &mut storage, week_datetime_pair)?;
+    let now = SystemTime::now();
+    let (week_start_datetime, week_end_datetime) = week_datetime_pair;
+    let week_start_of_time = week_start_datetime.timestamp() as u64;
+    let week_end_of_time = week_end_datetime.timestamp() as u64;
+    let week_entries = storage.read_entries(week_start_of_time, week_end_of_time)?;
+    let duration = now.elapsed()?.as_secs_f32();
+    debug!("Time taken (read database): {:.4} seconds", duration);
+
+    let now = SystemTime::now();
+    let lines = generate_presets(&presets, &week_entries)?;
+    let duration = now.elapsed()?.as_secs_f32();
+    debug!("Time taken (generate presets): {:.4} seconds", duration);
+
+    let now = SystemTime::now();
     for line in &lines {
         println!("{}", line);
     }
+    let duration = now.elapsed()?.as_secs_f32();
+    debug!("Time taken (print to terminal): {:.4} seconds", duration);
 
     if !missing_preset_names.is_empty() {
         let all_preset_names = get_map_keys_sorted_strings(&settings.print.presets.keys());
@@ -115,7 +138,7 @@ fn main() -> Result<()> {
     };
 
     let duration = now.elapsed()?.as_secs_f32();
-    debug!("Time taken: {:.2} seconds", duration);
+    debug!("Time taken: {:.4} seconds", duration);
 
     Ok(())
 }
