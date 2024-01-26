@@ -8,8 +8,8 @@ use std::io::prelude::*;
 use std::time::SystemTime;
 use timetracker_core::filesystem::get_database_file_path;
 use timetracker_core::settings::RECORD_INTERVAL_SECONDS;
+use timetracker_core::storage::Entries;
 use timetracker_core::storage::Storage;
-use timetracker_print_lib::datetime::DateTimeLocalPair;
 use timetracker_print_lib::print::get_relative_week_start_end;
 
 mod settings;
@@ -38,18 +38,8 @@ fn convert_to_csv_string_value(entry_var_name: &Option<String>) -> String {
     }
 }
 
-fn generate_csv_formated_lines(
-    storage: &mut Storage,
-    lines: &mut Vec<String>,
-    week_datetime_pair: DateTimeLocalPair,
-) -> Result<()> {
-    let (week_start_datetime, week_end_datetime) = week_datetime_pair;
-
-    let week_start_of_time = week_start_datetime.timestamp() as u64;
-    let week_end_of_time = week_end_datetime.timestamp() as u64;
-    let week_entries = storage.read_entries(week_start_of_time, week_end_of_time)?;
-
-    for week_entry in week_entries {
+fn generate_csv_formated_lines(entries: &Entries, lines: &mut Vec<String>) -> Result<()> {
+    for entry in entries.all_entries() {
         let line = format!(
             concat!(
                 "{utc_time_seconds},{duration_seconds},",
@@ -60,20 +50,20 @@ fn generate_csv_formated_lines(
                 "{var4_name},{var4_value},",
                 "{var5_name},{var5_value}"
             ),
-            utc_time_seconds = week_entry.utc_time_seconds,
-            duration_seconds = week_entry.duration_seconds,
-            status = week_entry.status,
-            executable = convert_to_csv_string_value(&week_entry.vars.executable),
-            var1_name = convert_to_csv_string_value(&week_entry.vars.var1_name),
-            var1_value = convert_to_csv_string_value(&week_entry.vars.var1_value),
-            var2_name = convert_to_csv_string_value(&week_entry.vars.var2_name),
-            var2_value = convert_to_csv_string_value(&week_entry.vars.var2_value),
-            var3_name = convert_to_csv_string_value(&week_entry.vars.var3_name),
-            var3_value = convert_to_csv_string_value(&week_entry.vars.var3_value),
-            var4_name = convert_to_csv_string_value(&week_entry.vars.var4_name),
-            var4_value = convert_to_csv_string_value(&week_entry.vars.var4_value),
-            var5_name = convert_to_csv_string_value(&week_entry.vars.var5_name),
-            var5_value = convert_to_csv_string_value(&week_entry.vars.var5_value),
+            utc_time_seconds = entry.utc_time_seconds,
+            duration_seconds = entry.duration_seconds,
+            status = entry.status,
+            executable = convert_to_csv_string_value(&entry.vars.executable),
+            var1_name = convert_to_csv_string_value(&entry.vars.var1_name),
+            var1_value = convert_to_csv_string_value(&entry.vars.var1_value),
+            var2_name = convert_to_csv_string_value(&entry.vars.var2_name),
+            var2_value = convert_to_csv_string_value(&entry.vars.var2_value),
+            var3_name = convert_to_csv_string_value(&entry.vars.var3_name),
+            var3_value = convert_to_csv_string_value(&entry.vars.var3_value),
+            var4_name = convert_to_csv_string_value(&entry.vars.var4_name),
+            var4_value = convert_to_csv_string_value(&entry.vars.var4_value),
+            var5_name = convert_to_csv_string_value(&entry.vars.var5_name),
+            var5_value = convert_to_csv_string_value(&entry.vars.var5_value),
         );
         lines.push(line);
     }
@@ -107,7 +97,13 @@ fn dump_database(
     // shouldn't really give any results, so it's probably pointless).
     let week_datetime_pair = get_relative_week_start_end(relative_week)?;
 
-    generate_csv_formated_lines(&mut storage, output_lines, week_datetime_pair)
+    let (week_start_datetime, week_end_datetime) = week_datetime_pair;
+
+    let week_start_of_time = week_start_datetime.timestamp() as u64;
+    let week_end_of_time = week_end_datetime.timestamp() as u64;
+    let week_entries = storage.read_entries(week_start_of_time, week_end_of_time)?;
+
+    generate_csv_formated_lines(&week_entries, output_lines)
 }
 
 fn main() -> Result<()> {
