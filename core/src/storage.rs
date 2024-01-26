@@ -332,6 +332,11 @@ impl Entries {
         self.end_datetime
     }
 
+    // Get a slice of all the entries.
+    pub fn all_entries(&self) -> &[Entry] {
+        &self.entries[..]
+    }
+
     // Get a slice of the entries for the datetime range given.
     pub fn datetime_range_entries(
         &self,
