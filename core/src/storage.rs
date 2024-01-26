@@ -421,7 +421,6 @@ impl Storage {
 
         let mut entries = Vec::<Entry>::new();
         while let Some(row) = rows.next()? {
-            debug!("row = {:?}", row);
             let utc_time_seconds: u64 = row.get_unwrap(INDEX_UTC_TIME_SECONDS);
             let duration_seconds: u64 = row.get_unwrap(INDEX_DURATION_SECONDS);
             let status_num: u64 = row.get_unwrap(INDEX_STATUS);
