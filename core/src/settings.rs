@@ -32,6 +32,22 @@ const DEFAULT_DATABASE_FILE_NAME: &str = ".timetracker.sqlite3";
 /// then in the home directory.
 pub const DEFAULT_CONFIG_FILE_NAME: &str = ".timetracker.toml";
 
+const PRESET_SUMMARY_WEEK: &str = "summary_week";
+const PRESET_SUMMARY_WEEKDAYS: &str = "summary_weekdays";
+const PRESET_SOFTWARE_WEEK: &str = "software_week";
+const PRESET_SOFTWARE_WEEKDAYS: &str = "software_weekdays";
+const PRESET_ACTIVITY_WEEK: &str = "activity_week";
+const PRESET_ACTIVITY_WEEKDAYS: &str = "activity_weekdays";
+const PRESET_WORKING_DIRECTORY_WEEK: &str = "working_directory_week";
+const PRESET_WORKING_DIRECTORY_WEEKDAYS: &str = "working_directory_weekdays";
+
+const DEFAULT_PRESET_NAMES: [&str; 4] = [
+    PRESET_SUMMARY_WEEK,
+    PRESET_SUMMARY_WEEKDAYS,
+    PRESET_WORKING_DIRECTORY_WEEK,
+    PRESET_SOFTWARE_WEEK,
+];
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EnvVarSettings {
     pub names: Vec<String>,
@@ -259,21 +275,16 @@ pub struct PrintSettings {
     pub presets: HashMap<String, PrintPresetSettings>,
 }
 
-pub fn new_print_settings(
-    config_builder: ConfigBuilder<DefaultState>,
-) -> Result<ConfigBuilder<DefaultState>, ConfigError> {
-    let preset_names = vec![
-        "summary_week".to_string(),
-        "summary_weekdays".to_string(),
-        "working_directory_week".to_string(),
-        "software_week".to_string(),
-    ];
+fn new_default_preset_names() -> Vec<String> {
+    DEFAULT_PRESET_NAMES.iter().map(|x| x.to_string()).collect()
+}
 
+fn new_default_presets() -> HashMap<String, PrintPresetSettings> {
     // Default presets that will always be available to users, unless
     // they override the names.
     let mut presets = HashMap::<String, PrintPresetSettings>::new();
     presets.insert(
-        "summary_week".to_string(),
+        PRESET_SUMMARY_WEEK.to_string(),
         PrintPresetSettings::new(
             Some(PrintType::Summary),
             Some(TimeScale::Week),
@@ -285,7 +296,7 @@ pub fn new_print_settings(
         ),
     );
     presets.insert(
-        "summary_weekdays".to_string(),
+        PRESET_SUMMARY_WEEKDAYS.to_string(),
         PrintPresetSettings::new(
             Some(PrintType::Summary),
             Some(TimeScale::Weekday),
@@ -298,7 +309,7 @@ pub fn new_print_settings(
     );
 
     presets.insert(
-        "activity_week".to_string(),
+        PRESET_ACTIVITY_WEEK.to_string(),
         PrintPresetSettings::new(
             Some(PrintType::Activity),
             Some(TimeScale::Week),
@@ -311,7 +322,7 @@ pub fn new_print_settings(
     );
 
     presets.insert(
-        "activity_weekdays".to_string(),
+        PRESET_ACTIVITY_WEEKDAYS.to_string(),
         PrintPresetSettings::new(
             Some(PrintType::Activity),
             Some(TimeScale::Weekday),
@@ -324,7 +335,7 @@ pub fn new_print_settings(
     );
 
     presets.insert(
-        "working_directory_week".to_string(),
+        PRESET_WORKING_DIRECTORY_WEEK.to_string(),
         PrintPresetSettings::new(
             Some(PrintType::Variables),
             Some(TimeScale::Week),
@@ -336,7 +347,7 @@ pub fn new_print_settings(
         ),
     );
     presets.insert(
-        "working_directory_weekdays".to_string(),
+        PRESET_WORKING_DIRECTORY_WEEKDAYS.to_string(),
         PrintPresetSettings::new(
             Some(PrintType::Variables),
             Some(TimeScale::Weekday),
@@ -349,7 +360,7 @@ pub fn new_print_settings(
     );
 
     presets.insert(
-        "software_week".to_string(),
+        PRESET_SOFTWARE_WEEK.to_string(),
         PrintPresetSettings::new(
             Some(PrintType::Software),
             Some(TimeScale::Week),
@@ -362,7 +373,7 @@ pub fn new_print_settings(
     );
 
     presets.insert(
-        "software_weekdays".to_string(),
+        PRESET_SOFTWARE_WEEKDAYS.to_string(),
         PrintPresetSettings::new(
             Some(PrintType::Software),
             Some(TimeScale::Weekday),
@@ -374,6 +385,14 @@ pub fn new_print_settings(
         ),
     );
 
+    presets
+}
+
+pub fn new_print_settings(
+    config_builder: ConfigBuilder<DefaultState>,
+) -> Result<ConfigBuilder<DefaultState>, ConfigError> {
+    let preset_names = new_default_preset_names();
+    let presets = new_default_presets();
     let config_builder = config_builder
         .set_default("print.time_scale", "Week")?
         .set_default("print.format_datetime", "Locale")?
