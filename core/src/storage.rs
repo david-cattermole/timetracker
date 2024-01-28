@@ -346,16 +346,30 @@ impl Entries {
         let start_of_time = start_datetime.timestamp() as u64;
         let end_of_time = end_datetime.timestamp() as u64;
 
-        let mut start_index = 0;
-        let mut end_index = 0;
+        let mut count: usize = 0;
+        let mut start_index: usize = usize::MAX;
+        let mut end_index: usize = usize::MIN;
         for (i, entry) in self.entries.iter().enumerate() {
             if (entry.utc_time_seconds > start_of_time) && (entry.utc_time_seconds < end_of_time) {
                 start_index = std::cmp::min(start_index, i);
                 end_index = std::cmp::max(end_index, i);
+                count = count + 1;
             }
         }
 
-        &self.entries[start_index..end_index]
+        if count == 0 {
+            if self.entries.is_empty() {
+                // The full range of entries, when entries is empty is
+                // an empty slice.
+                &self.entries[..]
+            } else {
+                // There is at least one entry, which we can use .
+                // TODO: Does this need to be [0..0] or [0..=0]?
+                &self.entries[0..0]
+            }
+        } else {
+            &self.entries[start_index..end_index]
+        }
     }
 
     pub fn is_datetime_range_empty(
