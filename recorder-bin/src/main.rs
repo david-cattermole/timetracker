@@ -289,7 +289,7 @@ fn start_recording(
             tx.send(true).unwrap();
         }
 
-        glib::Continue(true)
+        glib::ControlFlow::Continue
     });
 
     println!("Running Time Tracker Recorder...");

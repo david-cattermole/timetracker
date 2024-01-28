@@ -10,8 +10,8 @@ authors.workspace = true
 chrono = "0.4.19"
 clap = { version = "3.2.23", features = ["std", "derive"], default-features = false }
 config = { version = "0.13.3", features = ["toml"], default-features = false }
-glib = "0.15.5"
-gtk = "0.15.5"
+glib = "0.18.5"
+gtk = "0.18.1"
 serde = "1.0.159"
 serde_derive = "1.0.159"
 x11 = "2.19.1"
