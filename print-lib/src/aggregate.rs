@@ -184,7 +184,7 @@ pub fn sum_entry_activity_duration(
 pub fn get_map_keys_sorted_general<KeyType: Clone + Ord, ValueType: Clone>(
     map_keys: &Keys<KeyType, ValueType>,
 ) -> Vec<KeyType> {
-    let mut sorted_keys = Vec::new();
+    let mut sorted_keys = Vec::with_capacity(map_keys.len());
     for key in map_keys.clone() {
         sorted_keys.push(key.clone());
     }
@@ -193,7 +193,7 @@ pub fn get_map_keys_sorted_general<KeyType: Clone + Ord, ValueType: Clone>(
 }
 
 pub fn get_map_keys_sorted_strings<T>(map_keys: &Keys<String, T>) -> Vec<String> {
-    let mut sorted_keys = Vec::new();
+    let mut sorted_keys = Vec::with_capacity(map_keys.len());
     for key in map_keys.clone() {
         // Ignores 'unknown' tasks; tasks without a valid value.
         if !key.is_empty() {
