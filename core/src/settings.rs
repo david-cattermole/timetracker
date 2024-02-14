@@ -410,8 +410,18 @@ pub fn new_recorder_settings(
     Result::Ok(config_builder)
 }
 
-pub fn new_systray_settings(
+pub fn new_display_settings(
     config_builder: ConfigBuilder<DefaultState>,
 ) -> Result<ConfigBuilder<DefaultState>, ConfigError> {
+    let preset_names = new_default_preset_names();
+    let presets = new_default_presets();
+    let config_builder = config_builder
+        .set_default("print.time_scale", "Week")?
+        .set_default("print.format_datetime", "Locale")?
+        .set_default("print.format_duration", "HoursMinutes")?
+        .set_default("print.time_block_unit", "SixtyMinutes")?
+        .set_default("print.bar_graph_character_num_width", 60)?
+        .set_default("print.display_presets", preset_names)?
+        .set_default("print.presets", presets)?;
     Result::Ok(config_builder)
 }
