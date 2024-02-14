@@ -27,4 +27,4 @@ pub const DURATION_FORMAT_HOURS_MINUTES_SECONDS_LABEL: &str = "Hours Minutes Sec
 
 // Hours as decimal number rounded to 6 minute increments.
 pub const DURATION_FORMAT_DECIMAL_HOURS_ID: &str = "DurationFormat::DecimalHours";
-pub const DURATION_FORMAT_DECIMAL_HOURS_LABEL: &str = "Decimal Hours (1.2)";
+pub const DURATION_FORMAT_DECIMAL_HOURS_LABEL: &str = "Decimal Hours (12.5)";
