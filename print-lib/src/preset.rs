@@ -89,6 +89,7 @@ pub fn generate_presets(
     presets: &Vec<PrintPresetSettings>,
     entries: &Entries,
 ) -> Result<Vec<String>> {
+    // TODO: Make the color optional.
     let color = colored::Color::Green;
     let week_datetime_pair: DateTimeLocalPair = (entries.start_datetime(), entries.end_datetime());
 
