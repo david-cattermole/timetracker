@@ -346,16 +346,30 @@ impl Entries {
         let start_of_time = start_datetime.timestamp() as u64;
         let end_of_time = end_datetime.timestamp() as u64;
 
-        let mut start_index = 0;
-        let mut end_index = 0;
+        let mut count: usize = 0;
+        let mut start_index: usize = usize::MAX;
+        let mut end_index: usize = usize::MIN;
         for (i, entry) in self.entries.iter().enumerate() {
             if (entry.utc_time_seconds > start_of_time) && (entry.utc_time_seconds < end_of_time) {
                 start_index = std::cmp::min(start_index, i);
                 end_index = std::cmp::max(end_index, i);
+                count = count + 1;
             }
         }
 
-        &self.entries[start_index..end_index]
+        if count == 0 {
+            if self.entries.is_empty() {
+                // The full range of entries, when entries is empty is
+                // an empty slice.
+                &self.entries[..]
+            } else {
+                // There is at least one entry, which we can use .
+                // TODO: Does this need to be [0..0] or [0..=0]?
+                &self.entries[0..0]
+            }
+        } else {
+            &self.entries[start_index..end_index]
+        }
     }
 
     pub fn is_datetime_range_empty(
@@ -497,12 +511,6 @@ impl Storage {
         }
     }
 
-    // TODO: Fix how we deal with entries that wrap over the start and
-    // end time arguments. For example, if an entry spans from Monday
-    // 11:50pm to Tuesday 0:10am, this entry may be skipped or
-    // included. What we want is to cut off such an entry and "clamp"
-    // the time values of the entries to be only with-in the start/end
-    // time parameters.
     pub fn read_entries(
         &mut self,
         start_utc_time_seconds: u64,
@@ -525,10 +533,27 @@ impl Storage {
 
         let mut entries = Vec::<Entry>::new();
         while let Some(row) = rows.next()? {
-            let utc_time_seconds: u64 = row.get_unwrap(INDEX_UTC_TIME_SECONDS);
-            let duration_seconds: u64 = row.get_unwrap(INDEX_DURATION_SECONDS);
+            let mut utc_time_seconds: u64 = row.get_unwrap(INDEX_UTC_TIME_SECONDS);
+            let mut duration_seconds: u64 = row.get_unwrap(INDEX_DURATION_SECONDS);
             let status_num: u64 = row.get_unwrap(INDEX_STATUS);
             let status: EntryStatus = FromPrimitive::from_u64(status_num).unwrap();
+
+            // Clamp the entries at the start/end times.
+            //
+            // For example, if an entry spans from Monday 11:50pm to
+            // Tuesday 0:10am, this entry may be skipped or
+            // included. What we want is to cut off such an entry and
+            // "clamp" the time values of the entries to be only
+            // with-in the start/end time parameters.
+            let last_utc_time_seconds = utc_time_seconds + duration_seconds;
+            if utc_time_seconds < start_utc_time_seconds {
+                let difference = start_utc_time_seconds - utc_time_seconds;
+                utc_time_seconds = start_utc_time_seconds;
+                duration_seconds = duration_seconds - difference
+            } else if last_utc_time_seconds > end_utc_time_seconds {
+                let difference = last_utc_time_seconds - end_utc_time_seconds;
+                duration_seconds = duration_seconds - difference
+            }
 
             let mut vars = EntryVariablesList::empty();
             vars.executable = convert_sql_value_to_option_string(&row.get_unwrap(INDEX_EXECUTABLE));

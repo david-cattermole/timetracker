@@ -165,7 +165,7 @@ pub fn sum_entry_activity_duration(
 
     if fill_datetimes_gaps {
         let increment_seconds = ((time_block_unit.as_minutes() * 60) - 1) as usize;
-        for seconds in (seconds_min..seconds_max).skip(increment_seconds) {
+        for seconds in (seconds_min..seconds_max).step_by(increment_seconds) {
             let key = utc_seconds_rounded(seconds, time_block_unit).time();
 
             match map.get(&key) {
@@ -184,7 +184,7 @@ pub fn sum_entry_activity_duration(
 pub fn get_map_keys_sorted_general<KeyType: Clone + Ord, ValueType: Clone>(
     map_keys: &Keys<KeyType, ValueType>,
 ) -> Vec<KeyType> {
-    let mut sorted_keys = Vec::new();
+    let mut sorted_keys = Vec::with_capacity(map_keys.len());
     for key in map_keys.clone() {
         sorted_keys.push(key.clone());
     }
@@ -193,7 +193,7 @@ pub fn get_map_keys_sorted_general<KeyType: Clone + Ord, ValueType: Clone>(
 }
 
 pub fn get_map_keys_sorted_strings<T>(map_keys: &Keys<String, T>) -> Vec<String> {
-    let mut sorted_keys = Vec::new();
+    let mut sorted_keys = Vec::with_capacity(map_keys.len());
     for key in map_keys.clone() {
         // Ignores 'unknown' tasks; tasks without a valid value.
         if !key.is_empty() {
