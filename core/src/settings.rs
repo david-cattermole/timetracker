@@ -243,6 +243,17 @@ impl From<PrintPresetSettings> for ValueKind {
             ),
         };
 
+        match preset.use_color {
+            Some(value) => map.insert(
+                "use_color".to_string(),
+                Value::new(
+                    Some(&"use_color".to_string()),
+                    ValueKind::Boolean(value as bool),
+                ),
+            ),
+            None => map.insert("use_color".to_string(), Value::new(None, ValueKind::Nil)),
+        };
+
         match preset.variable_names {
             Some(value) => {
                 let envvars_array: Vec<_> = value
