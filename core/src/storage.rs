@@ -363,8 +363,7 @@ impl Entries {
                 // an empty slice.
                 &self.entries[..]
             } else {
-                // There is at least one entry, which we can use .
-                // TODO: Does this need to be [0..0] or [0..=0]?
+                // There is at least one entry, which we can use.
                 &self.entries[0..0]
             }
         } else {

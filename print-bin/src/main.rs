@@ -68,6 +68,7 @@ fn print_presets(args: &CommandArguments, settings: &PrintAppSettings) -> Result
         settings.print.format_duration,
         settings.print.time_block_unit,
         settings.print.bar_graph_character_num_width,
+        settings.print.use_color,
         &settings.core.environment_variables.names,
         &settings.print.display_presets,
         &settings.print.presets,

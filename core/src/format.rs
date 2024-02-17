@@ -270,6 +270,42 @@ impl From<PrintType> for ValueKind {
     }
 }
 
+#[derive(Debug, Copy, Clone, ValueEnum, Serialize, Deserialize)]
+pub enum ColorMode {
+    Auto,
+    Never,
+    Always,
+}
+
+impl fmt::Display for ColorMode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ColorMode::Auto => write!(f, "Auto"),
+            ColorMode::Never => write!(f, "Never"),
+            ColorMode::Always => write!(f, "Always"),
+        }
+    }
+}
+
+impl From<ColorMode> for ValueKind {
+    fn from(value: ColorMode) -> Self {
+        ValueKind::String(format!("{}", value))
+    }
+}
+
+pub fn color_mode_to_use_color(
+    color_mode: Option<ColorMode>,
+    auto_value: bool,
+    fallback_value: bool,
+) -> bool {
+    match color_mode {
+        None => fallback_value,
+        Some(ColorMode::Auto) => auto_value,
+        Some(ColorMode::Always) => true,
+        Some(ColorMode::Never) => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
 

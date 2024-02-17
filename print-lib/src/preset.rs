@@ -25,6 +25,7 @@ pub fn create_presets(
     default_format_duration: DurationFormat,
     default_time_block_unit: TimeBlockUnit,
     default_bar_graph_character_num_width: u8,
+    default_use_color: bool,
     environment_variables_names: &[String],
     display_presets: &Vec<String>,
     print_presets: &HashMap<String, PrintPresetSettings>,
@@ -40,6 +41,7 @@ pub fn create_presets(
         Some(default_format_duration),
         Some(default_time_block_unit),
         Some(default_bar_graph_character_num_width),
+        Some(default_use_color),
         Some(environment_variables_names.to_vec()),
     );
 
@@ -60,6 +62,7 @@ pub fn create_presets(
                     value.bar_graph_character_num_width,
                     core_preset.bar_graph_character_num_width,
                 );
+                let use_color = override_preset_value(value.use_color, core_preset.use_color);
                 let variable_names = value.variable_names.clone();
 
                 PrintPresetSettings::new(
@@ -69,6 +72,7 @@ pub fn create_presets(
                     format_duration,
                     time_block_unit,
                     bar_graph_character_num_width,
+                    use_color,
                     variable_names,
                 )
             }
@@ -85,12 +89,13 @@ pub fn create_presets(
     Ok((presets, missing_preset_names))
 }
 
+// When color is used, use this.
+const DEFAULT_COLOR: colored::Color = colored::Color::Green;
+
 pub fn generate_presets(
     presets: &Vec<PrintPresetSettings>,
     entries: &Entries,
 ) -> Result<Vec<String>> {
-    // TODO: Make the color optional.
-    let color = colored::Color::Green;
     let week_datetime_pair: DateTimeLocalPair = (entries.start_datetime(), entries.end_datetime());
 
     let mut lines = Vec::new();
@@ -113,6 +118,11 @@ pub fn generate_presets(
                 variables
             }
             _ => Vec::new(),
+        };
+
+        let color = match preset.use_color.unwrap() {
+            true => Some(DEFAULT_COLOR),
+            false => None,
         };
 
         generate_preset_lines(

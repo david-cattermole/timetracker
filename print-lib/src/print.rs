@@ -603,7 +603,7 @@ fn generate_entry_activity_lines(
     bar_graph_character_num_width: u8,
     weekday_datetime_pair: DateTimeLocalPair,
     time_block_unit: TimeBlockUnit,
-    color: colored::Color,
+    color: Option<colored::Color>,
 ) {
     let add_fringe_datetimes = false;
     let fill_datetimes_gaps = true;
@@ -639,10 +639,14 @@ fn generate_entry_activity_lines(
             for num in 0..bar_graph_character_num_width {
                 let check = (num as u32) < duration_ratio_round;
                 let character = match check {
-                    true => "-".color(color).to_string(),
-                    false => " ".to_string(),
+                    true => "-",
+                    false => " ",
                 };
-                duration_text.push_str(&character);
+                let character_string = match color {
+                    Some(c) => character.color(c).to_string(),
+                    None => character.to_string(),
+                };
+                duration_text.push_str(&character_string);
             }
             duration_text.push_str(&format!(" | {:2}m", num_minutes).to_string());
 
@@ -668,7 +672,7 @@ fn generate_activity_weekday(
     duration_format: DurationFormat,
     time_block_unit: TimeBlockUnit,
     bar_graph_character_num_width: u8,
-    color: colored::Color,
+    color: Option<colored::Color>,
 ) -> Result<()> {
     let (week_start_datetime, week_end_datetime) = week_datetime_pair;
 
@@ -717,7 +721,7 @@ fn generate_activity_weekday(
 fn generate_duration_bins_text(
     duration_bins_normalized: &Vec<f32>,
     use_unicode_blocks: bool,
-    color: colored::Color,
+    color: Option<colored::Color>,
 ) -> String {
     let mut duration_text = String::new();
     duration_text.push('[');
@@ -729,29 +733,35 @@ fn generate_duration_bins_text(
             text = " ".to_string();
         } else if duration_ratio <= 0.2 {
             if !use_unicode_blocks {
-                text = ".".color(color).to_string();
+                text = ".".to_string();
             } else {
-                text = "\u{2591}".color(color).to_string();
+                text = "\u{2591}".to_string();
             }
         } else if duration_ratio <= 0.5 {
             if !use_unicode_blocks {
-                text = "-".color(color).to_string();
+                text = "-".to_string();
             } else {
-                text = "\u{2592}".color(color).to_string();
+                text = "\u{2592}".to_string();
             }
         } else if duration_ratio <= 0.8 {
             if !use_unicode_blocks {
-                text = "x".color(color).to_string();
+                text = "x".to_string();
             } else {
-                text = "\u{2593}".color(color).to_string();
+                text = "\u{2593}".to_string();
             }
         } else {
             if !use_unicode_blocks {
-                text = "X".color(color).to_string();
+                text = "X".to_string();
             } else {
-                text = "\u{2588}".color(color).to_string();
+                text = "\u{2588}".to_string();
             }
         }
+
+        let text = match color {
+            Some(c) => text.color(c).to_string(),
+            None => text.into(),
+        };
+
         duration_text.push_str(&text)
     }
 
@@ -767,7 +777,7 @@ fn generate_entry_day_activity_lines(
     datetime_format: DateTimeFormat,
     duration_format: DurationFormat,
     bar_graph_character_num_width: u8,
-    color: colored::Color,
+    color: Option<colored::Color>,
     weekday: chrono::Weekday,
     weekday_datetime_pair: DateTimeLocalPair,
     time_block_unit: TimeBlockUnit,
@@ -877,7 +887,7 @@ fn generate_activity_week(
     duration_format: DurationFormat,
     time_block_unit: TimeBlockUnit,
     bar_graph_character_num_width: u8,
-    color: colored::Color,
+    color: Option<colored::Color>,
 ) -> Result<()> {
     let (week_start_datetime, week_end_datetime) = week_datetime_pair;
 
@@ -952,7 +962,7 @@ pub fn generate_preset_lines(
     duration_format: DurationFormat,
     time_block_unit: TimeBlockUnit,
     bar_graph_character_num_width: u8,
-    color: colored::Color,
+    color: Option<colored::Color>,
 ) -> Result<()> {
     let line_indent = " ";
 

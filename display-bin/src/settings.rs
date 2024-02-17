@@ -1,6 +1,8 @@
 use clap::Parser;
 use config::ConfigError;
 use serde_derive::Deserialize;
+use timetracker_core::format::color_mode_to_use_color;
+use timetracker_core::format::ColorMode;
 use timetracker_core::format::DateTimeFormat;
 use timetracker_core::format::DurationFormat;
 use timetracker_core::settings::new_core_settings;
@@ -37,6 +39,11 @@ pub struct CommandArguments {
     #[clap(long, value_enum)]
     pub format_duration: Option<DurationFormat>,
 
+    /// Show colored text?
+    // Similar to 'git diff --color' flag.
+    #[clap(long, value_enum)]
+    pub color: Option<ColorMode>,
+
     /// Override the directory to search for the database file.
     #[clap(long, value_parser)]
     pub database_dir: Option<String>,
@@ -65,10 +72,12 @@ impl DisplayAppSettings {
         // Use command line 'arguments' to override the default
         // values. These will always override any configuration file
         // or environment variable.
+        let use_color = color_mode_to_use_color(arguments.color, false, false);
         builder = builder
             .set_override_option("print.display_presets", arguments.presets.clone())?
             .set_override_option("print.format_datetime", arguments.format_datetime)?
-            .set_override_option("print.format_duration", arguments.format_duration)?;
+            .set_override_option("print.format_duration", arguments.format_duration)?
+            .set_override_option("print.use_color", Some(use_color))?;
 
         let settings: Self = builder.build()?.try_deserialize()?;
         validate_core_settings(&settings.core).unwrap();

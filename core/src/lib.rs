@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate num_derive;
 
+use log::debug;
+use terminfo;
+
 pub mod entries;
 pub mod filesystem;
 pub mod format;
@@ -35,4 +38,16 @@ pub fn format_short_executable_name(name: &str) -> &str {
         Some(start_index) => &strip_end[start_index + 1..],
         None => strip_end,
     }
+}
+
+pub fn terminal_supports_color() -> bool {
+    let info = terminfo::Database::from_env().unwrap();
+    let terminal_max_colors = info.get::<terminfo::capability::MaxColors>();
+    debug!("terminal_max_colors={:?}", terminal_max_colors);
+    let color_is_supported = match terminal_max_colors {
+        Some(n) => n.0 > 0,
+        None => false,
+    };
+    debug!("terminal_supports_color={}", color_is_supported);
+    color_is_supported
 }

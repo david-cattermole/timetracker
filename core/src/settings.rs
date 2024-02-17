@@ -133,6 +133,7 @@ pub struct PrintPresetSettings {
     pub format_duration: Option<DurationFormat>,
     pub time_block_unit: Option<TimeBlockUnit>,
     pub bar_graph_character_num_width: Option<u8>,
+    pub use_color: Option<bool>,
     pub variable_names: Option<Vec<String>>,
 }
 
@@ -144,6 +145,7 @@ impl PrintPresetSettings {
         format_duration: Option<DurationFormat>,
         time_block_unit: Option<TimeBlockUnit>,
         bar_graph_character_num_width: Option<u8>,
+        use_color: Option<bool>,
         variable_names: Option<Vec<String>>,
     ) -> Self {
         Self {
@@ -153,6 +155,7 @@ impl PrintPresetSettings {
             format_duration,
             time_block_unit,
             bar_graph_character_num_width,
+            use_color,
             variable_names,
         }
     }
@@ -271,6 +274,7 @@ pub struct PrintSettings {
     pub format_duration: DurationFormat,
     pub time_block_unit: TimeBlockUnit,
     pub bar_graph_character_num_width: u8,
+    pub use_color: bool,
     pub display_presets: Vec<String>,
     pub presets: HashMap<String, PrintPresetSettings>,
 }
@@ -293,6 +297,7 @@ fn new_default_presets() -> HashMap<String, PrintPresetSettings> {
             None,
             None,
             None,
+            None,
         ),
     );
     presets.insert(
@@ -300,6 +305,7 @@ fn new_default_presets() -> HashMap<String, PrintPresetSettings> {
         PrintPresetSettings::new(
             Some(PrintType::Summary),
             Some(TimeScale::Weekday),
+            None,
             None,
             None,
             None,
@@ -318,6 +324,7 @@ fn new_default_presets() -> HashMap<String, PrintPresetSettings> {
             None,
             None,
             None,
+            None,
         ),
     );
 
@@ -326,6 +333,7 @@ fn new_default_presets() -> HashMap<String, PrintPresetSettings> {
         PrintPresetSettings::new(
             Some(PrintType::Activity),
             Some(TimeScale::Weekday),
+            None,
             None,
             None,
             None,
@@ -343,6 +351,7 @@ fn new_default_presets() -> HashMap<String, PrintPresetSettings> {
             None,
             None,
             None,
+            None,
             Some(vec!["PWD".to_string()]),
         ),
     );
@@ -351,6 +360,7 @@ fn new_default_presets() -> HashMap<String, PrintPresetSettings> {
         PrintPresetSettings::new(
             Some(PrintType::Variables),
             Some(TimeScale::Weekday),
+            None,
             None,
             None,
             None,
@@ -369,6 +379,7 @@ fn new_default_presets() -> HashMap<String, PrintPresetSettings> {
             None,
             None,
             None,
+            None,
         ),
     );
 
@@ -377,6 +388,7 @@ fn new_default_presets() -> HashMap<String, PrintPresetSettings> {
         PrintPresetSettings::new(
             Some(PrintType::Software),
             Some(TimeScale::Weekday),
+            None,
             None,
             None,
             None,
@@ -399,6 +411,7 @@ pub fn new_print_settings(
         .set_default("print.format_duration", "HoursMinutes")?
         .set_default("print.time_block_unit", "SixtyMinutes")?
         .set_default("print.bar_graph_character_num_width", 60)?
+        .set_default("print.use_color", true)?
         .set_default("print.display_presets", preset_names)?
         .set_default("print.presets", presets)?;
     Result::Ok(config_builder)
@@ -421,6 +434,7 @@ pub fn new_display_settings(
         .set_default("print.format_duration", "HoursMinutes")?
         .set_default("print.time_block_unit", "SixtyMinutes")?
         .set_default("print.bar_graph_character_num_width", 60)?
+        .set_default("print.use_color", false)?
         .set_default("print.display_presets", preset_names)?
         .set_default("print.presets", presets)?;
     Result::Ok(config_builder)
