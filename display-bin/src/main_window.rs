@@ -28,6 +28,7 @@ use gtk::{
 };
 use log::warn;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::SystemTime;
 
@@ -40,8 +41,19 @@ use timetracker_print_lib::datetime::DateTimeLocalPair;
 use timetracker_print_lib::preset::create_presets;
 use timetracker_print_lib::preset::generate_presets;
 
+/// What state is a Preset in? A user can toggle the Preset on/off.
+#[derive(Debug, Copy, Clone)]
+pub enum PresetState {
+    /// The Preset is enabled and able to be used.
+    Enable,
+    /// The Preset is disabled and cannot or should not be used.
+    Disable,
+}
+
 pub struct GlobalState {
     settings: DisplayAppSettings,
+    all_preset_names: Vec<String>,
+    preset_states: HashMap<String, PresetState>,
     window: Option<ApplicationWindow>,
     status_bar: Option<Statusbar>,
     week_number_spin_button: Option<SpinButton>,
@@ -59,8 +71,38 @@ pub type GlobalStateRcRefCell = Rc<RefCell<GlobalState>>;
 impl GlobalState {
     pub fn new_with_settings(settings: DisplayAppSettings) -> GlobalState {
         let text_buffer = TextBuffer::builder().build();
+
+        let mut preset_states = HashMap::new();
+        for preset_name in &settings.print.display_presets {
+            preset_states.insert(preset_name.clone(), PresetState::Enable);
+        }
+
+        // Add the additional preset names (not in the
+        // 'display_presets') to the end of the displayed list,
+        // sorted.
+        let mut other_preset_names = Vec::new();
+        for preset_name in settings.print.presets.keys() {
+            let is_display_preset = settings
+                .print
+                .display_presets
+                .iter()
+                .any(|x| x.eq(preset_name));
+            if !is_display_preset {
+                other_preset_names.push(preset_name);
+            }
+        }
+        other_preset_names.sort_unstable();
+
+        let mut all_preset_names = settings.print.display_presets.clone();
+        for preset_name in other_preset_names {
+            all_preset_names.push(preset_name.clone());
+            preset_states.insert(preset_name.clone(), PresetState::Disable);
+        }
+
         GlobalState {
             settings: settings,
+            all_preset_names: all_preset_names,
+            preset_states: preset_states,
             window: None,
             status_bar: None,
             week_number_spin_button: None,
@@ -104,7 +146,6 @@ fn generate_text(
         settings.print.use_color,
         &settings.core.environment_variables.names,
         &settings.print.display_presets,
-        // TODO: Sort the presets by name.
         &settings.print.presets,
     )?;
 
@@ -324,25 +365,22 @@ fn preset_toggle_clicked(
 ) -> Result<()> {
     let mut borrowed_state = global_state.borrow_mut();
 
-    let index_contained = borrowed_state
-        .settings
-        .print
-        .display_presets
-        .iter()
-        .position(|x| x.eq(&preset_name));
-
-    match index_contained {
-        Some(index) => {
-            borrowed_state.settings.print.display_presets.remove(index);
-        }
-        None => {
-            borrowed_state
-                .settings
-                .print
-                .display_presets
-                .push(preset_name.clone());
-        }
+    let toggled_state = match borrowed_state.preset_states.get(&preset_name) {
+        Some(PresetState::Enable) => PresetState::Disable,
+        Some(PresetState::Disable) => PresetState::Enable,
+        None => PresetState::Disable,
     };
+    borrowed_state
+        .preset_states
+        .insert(preset_name, toggled_state);
+
+    borrowed_state.settings.print.display_presets.clear();
+    for name in borrowed_state.all_preset_names.clone() {
+        match borrowed_state.preset_states.get(&name) {
+            Some(PresetState::Enable) => borrowed_state.settings.print.display_presets.push(name),
+            _ => (),
+        };
+    }
 
     let week_datetime_pair = get_absolute_week_start_end(borrowed_state.week_number)?;
     let status_bar = borrowed_state.status_bar.as_ref().unwrap();
@@ -361,15 +399,15 @@ fn preset_toggle_clicked(
 fn build_preset_buttons(
     layout_widget: &Box,
     global_state: GlobalStateRcRefCell,
-    settings: &DisplayAppSettings,
+    preset_names: &[String],
+    preset_states: &HashMap<String, PresetState>,
 ) {
-    let all_preset_names = get_map_keys_sorted_strings(&settings.print.presets.keys());
-    for preset_name in all_preset_names {
-        let enabled = settings
-            .print
-            .display_presets
-            .iter()
-            .any(|x| x.eq(&preset_name));
+    for preset_name in preset_names {
+        let preset_name = preset_name.clone();
+        let enabled = match preset_states.get(&preset_name) {
+            Some(PresetState::Enable) => true,
+            _ => false,
+        };
 
         let toggle_button = ToggleButton::with_label(&preset_name);
         toggle_button.set_active(enabled);
@@ -425,7 +463,8 @@ fn construct_window(week_number: u32, global_state: GlobalStateRcRefCell) -> App
     build_preset_buttons(
         &preset_buttons_layout,
         global_state.clone(),
-        &borrowed_state.settings,
+        &borrowed_state.all_preset_names,
+        &borrowed_state.preset_states,
     );
 
     borrowed_state.format_date_time_combo_box = Some(
