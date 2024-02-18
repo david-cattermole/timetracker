@@ -27,7 +27,7 @@ pub fn create_presets(
     default_bar_graph_character_num_width: u8,
     default_use_color: bool,
     environment_variables_names: &[String],
-    display_presets: &Vec<String>,
+    display_presets: &[String],
     print_presets: &HashMap<String, PrintPresetSettings>,
 ) -> Result<(Vec<PrintPresetSettings>, Vec<String>)> {
     let core_preset = PrintPresetSettings::new(
