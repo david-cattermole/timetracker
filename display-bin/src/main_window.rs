@@ -149,10 +149,13 @@ fn generate_text(
         &settings.print.presets,
     )?;
 
-    // TODO: Fetch all the Storage entries we will need for the full
-    // time range, then pass that fetched data to all the
-    // functions. (this assumes that fetching data from the database
-    // is likely the slowest runtime)
+    // Fetch the Storage entries we will need for the full time range,
+    // then pass that fetched data to all the functions. This assumes
+    // that fetching data from the database is likely the slowest
+    // runtime.
+    //
+    // TODO: Accumulate the storage data, so that the Storage entries
+    // never have to be fetched twice.
     let (week_start_datetime, week_end_datetime) = week_datetime_pair;
     let week_start_of_time = week_start_datetime.timestamp() as u64;
     let week_end_of_time = week_end_datetime.timestamp() as u64;
