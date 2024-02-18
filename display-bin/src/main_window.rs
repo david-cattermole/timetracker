@@ -161,7 +161,6 @@ fn generate_text(
     let week_end_of_time = week_end_datetime.timestamp() as u64;
     let week_entries = storage.read_entries(week_start_of_time, week_end_of_time)?;
 
-    // TODO: Stop using color in the text output.
     let lines = generate_presets(&presets, &week_entries)?;
     let all_lines_text = lines.join("\n");
 
