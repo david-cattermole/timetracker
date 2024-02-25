@@ -6,7 +6,7 @@ use timetracker_core::format::ColorMode;
 use timetracker_core::format::DateTimeFormat;
 use timetracker_core::format::DurationFormat;
 use timetracker_core::settings::new_core_settings;
-use timetracker_core::settings::new_display_settings;
+use timetracker_core::settings::new_print_gui_settings;
 use timetracker_core::settings::validate_core_settings;
 use timetracker_core::settings::CoreSettings;
 use timetracker_core::settings::PrintSettings;
@@ -55,19 +55,19 @@ pub struct CommandArguments {
 
 #[derive(Debug, Deserialize)]
 #[allow(unused)]
-pub struct DisplayAppSettings {
+pub struct PrintGuiAppSettings {
     pub core: CoreSettings,
     pub print: PrintSettings,
 }
 
-impl DisplayAppSettings {
+impl PrintGuiAppSettings {
     pub fn new(arguments: &CommandArguments) -> Result<Self, ConfigError> {
         let builder = new_core_settings(
             arguments.database_dir.clone(),
             arguments.database_file_name.clone(),
             false,
         )?;
-        let mut builder = new_display_settings(builder)?;
+        let mut builder = new_print_gui_settings(builder)?;
 
         // Use command line 'arguments' to override the default
         // values. These will always override any configuration file

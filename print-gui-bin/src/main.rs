@@ -2,7 +2,7 @@ use crate::main_window::build_ui;
 use crate::main_window::GlobalState;
 use crate::main_window::GlobalStateRcRefCell;
 use crate::settings::CommandArguments;
-use crate::settings::DisplayAppSettings;
+use crate::settings::PrintGuiAppSettings;
 
 use anyhow::bail;
 use anyhow::Result;
@@ -28,7 +28,7 @@ fn main() -> Result<()> {
 
     let args = CommandArguments::parse();
 
-    let settings = DisplayAppSettings::new(&args);
+    let settings = PrintGuiAppSettings::new(&args);
     if settings.is_err() {
         bail!("Settings are invalid: {:?}", settings);
     }

@@ -11,7 +11,7 @@ use crate::constants::DURATION_FORMAT_HOURS_MINUTES_ID;
 use crate::constants::DURATION_FORMAT_HOURS_MINUTES_LABEL;
 use crate::constants::DURATION_FORMAT_HOURS_MINUTES_SECONDS_ID;
 use crate::constants::DURATION_FORMAT_HOURS_MINUTES_SECONDS_LABEL;
-use crate::settings::DisplayAppSettings;
+use crate::settings::PrintGuiAppSettings;
 use crate::utils::datetime_format_as_id;
 use crate::utils::duration_format_as_id;
 use crate::utils::get_absolute_week_start_end;
@@ -51,7 +51,7 @@ pub enum PresetState {
 }
 
 pub struct GlobalState {
-    settings: DisplayAppSettings,
+    settings: PrintGuiAppSettings,
     all_preset_names: Vec<String>,
     preset_states: HashMap<String, PresetState>,
     window: Option<ApplicationWindow>,
@@ -69,7 +69,7 @@ pub struct GlobalState {
 pub type GlobalStateRcRefCell = Rc<RefCell<GlobalState>>;
 
 impl GlobalState {
-    pub fn new_with_settings(settings: DisplayAppSettings) -> GlobalState {
+    pub fn new_with_settings(settings: PrintGuiAppSettings) -> GlobalState {
         let text_buffer = TextBuffer::builder().build();
 
         let mut preset_states = HashMap::new();
@@ -119,7 +119,7 @@ impl GlobalState {
 
 fn generate_text(
     week_datetime_pair: DateTimeLocalPair,
-    settings: &DisplayAppSettings,
+    settings: &PrintGuiAppSettings,
 ) -> Result<String> {
     let database_file_path = get_database_file_path(
         &settings.core.database_dir,
@@ -178,7 +178,7 @@ fn generate_text(
 fn update_date_range_label(
     date_range_label: &Label,
     week_datetime_pair: DateTimeLocalPair,
-    settings: &DisplayAppSettings,
+    settings: &PrintGuiAppSettings,
 ) -> Result<()> {
     let date_range_string = format!(
         "from {} to {}",
@@ -195,7 +195,7 @@ fn update_text_view(
     week_datetime_pair: DateTimeLocalPair,
     status_bar: &Statusbar,
     text_buffer: &TextBuffer,
-    settings: &DisplayAppSettings,
+    settings: &PrintGuiAppSettings,
 ) -> Result<()> {
     let context_id = status_bar.context_id("update_text_view");
 

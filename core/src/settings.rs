@@ -434,7 +434,7 @@ pub fn new_recorder_settings(
     Result::Ok(config_builder)
 }
 
-pub fn new_display_settings(
+pub fn new_print_gui_settings(
     config_builder: ConfigBuilder<DefaultState>,
 ) -> Result<ConfigBuilder<DefaultState>, ConfigError> {
     let preset_names = new_default_preset_names();

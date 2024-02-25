@@ -1,7 +1,7 @@
-pub const APPLICATION_ID: &str = "org.timetracker.display";
+pub const APPLICATION_ID: &str = "org.timetracker.print-gui";
 pub const MAIN_WINDOW_GLADE: &'static str = include_str!("main_window.glade");
 
-pub const WINDOW_TITLE: &str = "Timetracker Display";
+pub const WINDOW_TITLE: &str = "Timetracker Print GUI";
 pub const WINDOW_DEFAULT_WIDTH: i32 = 800;
 pub const WINDOW_DEFAULT_HEIGHT: i32 = 900;
 

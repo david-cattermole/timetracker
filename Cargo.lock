@@ -1279,24 +1279,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "timetracker-display"
-version = "0.4.0"
-dependencies = [
- "anyhow",
- "chrono",
- "clap",
- "config",
- "env_logger",
- "glib",
- "gtk",
- "log",
- "serde",
- "serde_derive",
- "timetracker-core",
- "timetracker-print-lib",
-]
-
-[[package]]
 name = "timetracker-dump"
 version = "0.4.0"
 dependencies = [
@@ -1325,6 +1307,24 @@ dependencies = [
  "config",
  "dirs 5.0.1",
  "env_logger",
+ "log",
+ "serde",
+ "serde_derive",
+ "timetracker-core",
+ "timetracker-print-lib",
+]
+
+[[package]]
+name = "timetracker-print-gui"
+version = "0.4.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "config",
+ "env_logger",
+ "glib",
+ "gtk",
  "log",
  "serde",
  "serde_derive",

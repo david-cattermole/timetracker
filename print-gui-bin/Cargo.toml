@@ -1,6 +1,6 @@
 [package]
-name = "timetracker-display"
-description = "Timetracker user interface for displaying data."
+name = "timetracker-print-gui"
+description = "Timetracker displaying formated data in a graphical user interface."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
