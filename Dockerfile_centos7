@@ -11,7 +11,7 @@
 #
 # To package the resulting binaries for release to users:
 # $ cd target/release/
-# $ zip ../../timetracker-v0.3.3.zip timetracker-print timetracker-recorder timetracker-dump timetracker-configure
+# $ zip ../../timetracker-v0.4.x.zip timetracker-print timetracker-print-gui timetracker-recorder timetracker-dump timetracker-configure
 #
 
 FROM centos:7
