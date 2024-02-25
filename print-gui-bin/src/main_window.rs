@@ -181,7 +181,7 @@ fn update_date_range_label(
     settings: &PrintGuiAppSettings,
 ) -> Result<()> {
     let date_range_string = format!(
-        "from {} to {}",
+        "Date from {} to {}",
         format_date(week_datetime_pair.0, settings.print.format_datetime),
         format_date(week_datetime_pair.1, settings.print.format_datetime),
     )
