@@ -312,7 +312,7 @@ fn insert_new_entry_rows_into_database(
 //
 // Allows filtering the full list of entries by a sub-set of
 // times/dates (without having to fetch data from the database).
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Entries {
     start_datetime: chrono::DateTime<chrono::Local>,
     end_datetime: chrono::DateTime<chrono::Local>,

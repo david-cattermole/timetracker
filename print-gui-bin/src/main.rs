@@ -1,4 +1,6 @@
 use crate::main_window::build_ui;
+use crate::main_window::GlobalEntries;
+use crate::main_window::GlobalEntriesRcRefCell;
 use crate::main_window::GlobalState;
 use crate::main_window::GlobalStateRcRefCell;
 use crate::settings::CommandArguments;
@@ -41,11 +43,12 @@ fn main() -> Result<()> {
 
     let global_state: GlobalStateRcRefCell =
         Rc::new(RefCell::new(GlobalState::new_with_settings(settings)));
+    let global_entries: GlobalEntriesRcRefCell = Rc::new(RefCell::new(GlobalEntries::new()));
 
     application.connect_activate(clone!(
         @strong global_state =>
             move |app| {
-                build_ui(app, global_state.clone())
+                build_ui(app, global_state.clone(), global_entries.clone())
             }
     ));
 

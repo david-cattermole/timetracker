@@ -35,6 +35,7 @@ use std::time::SystemTime;
 use timetracker_core::filesystem::get_database_file_path;
 use timetracker_core::format::format_date;
 use timetracker_core::settings::RECORD_INTERVAL_SECONDS;
+use timetracker_core::storage::Entries;
 use timetracker_core::storage::Storage;
 use timetracker_print_lib::aggregate::get_map_keys_sorted_strings;
 use timetracker_print_lib::datetime::DateTimeLocalPair;
@@ -50,10 +51,13 @@ pub enum PresetState {
     Disable,
 }
 
+type MapStringPresetState = HashMap<String, PresetState>;
+type MapWeekNumEntries = HashMap<u32, Entries>;
+
 pub struct GlobalState {
     settings: PrintGuiAppSettings,
     all_preset_names: Vec<String>,
-    preset_states: HashMap<String, PresetState>,
+    preset_states: MapStringPresetState,
     window: Option<ApplicationWindow>,
     status_bar: Option<Statusbar>,
     week_number_spin_button: Option<SpinButton>,
@@ -72,7 +76,7 @@ impl GlobalState {
     pub fn new_with_settings(settings: PrintGuiAppSettings) -> GlobalState {
         let text_buffer = TextBuffer::builder().build();
 
-        let mut preset_states = HashMap::new();
+        let mut preset_states = MapStringPresetState::new();
         for preset_name in &settings.print.display_presets {
             preset_states.insert(preset_name.clone(), PresetState::Enable);
         }
@@ -117,26 +121,65 @@ impl GlobalState {
     }
 }
 
-fn generate_text(
-    week_datetime_pair: DateTimeLocalPair,
-    settings: &PrintGuiAppSettings,
-) -> Result<String> {
-    let database_file_path = get_database_file_path(
-        &settings.core.database_dir,
-        &settings.core.database_file_name,
-    );
-    if !database_file_path.is_some() {
-        warn!(
-            "Database file {:?} not found in {:?}",
-            &settings.core.database_file_name, &settings.core.database_dir
-        );
+pub struct GlobalEntries {
+    map: MapWeekNumEntries,
+}
+
+pub type GlobalEntriesRcRefCell = Rc<RefCell<GlobalEntries>>;
+
+impl GlobalEntries {
+    pub fn new() -> GlobalEntries {
+        GlobalEntries {
+            map: MapWeekNumEntries::new(),
+        }
     }
+}
 
-    let mut storage = Storage::open_as_read_only(
-        &database_file_path.expect("Database file path should be valid"),
-        RECORD_INTERVAL_SECONDS,
-    )?;
+/// Fetch the Storage entries we will need for a given week, and cache
+/// it for reuse. This ensures we never fetch the same data from the
+/// database twice (while the GUI is running).
+///
+/// Currently, to clear the cache, the program must be restarted.
+///
+/// This optimisation assumes that fetching data from the database is
+/// likely the slowest runtime (which it almost always is, unless a
+/// trivial database entry is used).
+fn query_and_cache_entries(
+    week_number: u32,
+    week_datetime_pair: DateTimeLocalPair,
+    database_dir: &String,
+    database_file_name: &String,
+    entries_cache: &mut MapWeekNumEntries,
+) -> Result<Entries> {
+    match entries_cache.get(&week_number) {
+        Some(week_entries) => Ok(week_entries.clone()),
+        None => {
+            let database_file_path = get_database_file_path(database_dir, database_file_name);
+            if !database_file_path.is_some() {
+                warn!(
+                    "Database file {:?} not found in {:?}",
+                    database_file_name, database_dir
+                );
+            }
 
+            let mut storage = Storage::open_as_read_only(
+                &database_file_path.expect("Database file path should be valid"),
+                RECORD_INTERVAL_SECONDS,
+            )?;
+
+            let (week_start_datetime, week_end_datetime) = week_datetime_pair;
+            let week_start_of_time = week_start_datetime.timestamp() as u64;
+            let week_end_of_time = week_end_datetime.timestamp() as u64;
+
+            let week_entries = storage.read_entries(week_start_of_time, week_end_of_time)?;
+            entries_cache.insert(week_number, week_entries.clone());
+
+            Ok(week_entries)
+        }
+    }
+}
+
+fn generate_text(week_entries: &Entries, settings: &PrintGuiAppSettings) -> Result<String> {
     let (presets, missing_preset_names) = create_presets(
         settings.print.time_scale,
         settings.print.format_datetime,
@@ -148,18 +191,6 @@ fn generate_text(
         &settings.print.display_presets,
         &settings.print.presets,
     )?;
-
-    // Fetch the Storage entries we will need for the full time range,
-    // then pass that fetched data to all the functions. This assumes
-    // that fetching data from the database is likely the slowest
-    // runtime.
-    //
-    // TODO: Accumulate the storage data, so that the Storage entries
-    // never have to be fetched twice.
-    let (week_start_datetime, week_end_datetime) = week_datetime_pair;
-    let week_start_of_time = week_start_datetime.timestamp() as u64;
-    let week_end_of_time = week_end_datetime.timestamp() as u64;
-    let week_entries = storage.read_entries(week_start_of_time, week_end_of_time)?;
 
     let lines = generate_presets(&presets, &week_entries)?;
     let all_lines_text = lines.join("\n");
@@ -192,7 +223,7 @@ fn update_date_range_label(
 }
 
 fn update_text_view(
-    week_datetime_pair: DateTimeLocalPair,
+    entries: &Entries,
     status_bar: &Statusbar,
     text_buffer: &TextBuffer,
     settings: &PrintGuiAppSettings,
@@ -201,21 +232,21 @@ fn update_text_view(
 
     let msg = format!(
         "Generating data from {} to {}...",
-        format_date(week_datetime_pair.0, settings.print.format_datetime),
-        format_date(week_datetime_pair.1, settings.print.format_datetime),
+        format_date(entries.start_datetime(), settings.print.format_datetime),
+        format_date(entries.end_datetime(), settings.print.format_datetime),
     )
     .to_string();
     status_bar.push(context_id, &msg);
 
     let now = SystemTime::now();
-    let text = generate_text(week_datetime_pair, settings)?;
+    let text = generate_text(entries, settings)?;
     text_buffer.set_text(&text);
     let duration = now.elapsed()?.as_secs_f32();
 
     let msg = format!(
         "Generated data for {} to {} (took {:.4} seconds)",
-        format_date(week_datetime_pair.0, settings.print.format_datetime),
-        format_date(week_datetime_pair.1, settings.print.format_datetime),
+        format_date(entries.start_datetime(), settings.print.format_datetime),
+        format_date(entries.end_datetime(), settings.print.format_datetime),
         duration
     );
     status_bar.push(context_id, &msg);
@@ -223,8 +254,13 @@ fn update_text_view(
     Ok(())
 }
 
-fn week_number_changed(widget: &SpinButton, global_state: GlobalStateRcRefCell) -> Result<()> {
+fn week_number_changed(
+    widget: &SpinButton,
+    global_state: GlobalStateRcRefCell,
+    global_entries: GlobalEntriesRcRefCell,
+) -> Result<()> {
     let mut borrowed_state = global_state.borrow_mut();
+    let mut borrowed_entries = global_entries.borrow_mut();
 
     let status_bar = borrowed_state.status_bar.as_ref().unwrap();
     let context_id = status_bar.context_id("week_number_changed");
@@ -232,6 +268,14 @@ fn week_number_changed(widget: &SpinButton, global_state: GlobalStateRcRefCell) 
 
     let week_number: u32 = widget.value_as_int().try_into().unwrap();
     let week_datetime_pair = get_absolute_week_start_end(week_number)?;
+
+    let entries = query_and_cache_entries(
+        week_number,
+        week_datetime_pair,
+        &borrowed_state.settings.core.database_dir,
+        &borrowed_state.settings.core.database_file_name,
+        &mut borrowed_entries.map,
+    )?;
 
     // Update label text with start and end date formatted as user
     // wants it (requires shared settings).
@@ -244,7 +288,7 @@ fn week_number_changed(widget: &SpinButton, global_state: GlobalStateRcRefCell) 
 
     // Fetch the database entries and generate the text buffer again.
     update_text_view(
-        week_datetime_pair,
+        &entries,
         &status_bar,
         &borrowed_state.text_buffer,
         &borrowed_state.settings,
@@ -260,8 +304,10 @@ fn week_number_changed(widget: &SpinButton, global_state: GlobalStateRcRefCell) 
 fn format_date_time_changed(
     widget: &ComboBoxText,
     global_state: GlobalStateRcRefCell,
+    global_entries: GlobalEntriesRcRefCell,
 ) -> Result<()> {
     let mut borrowed_state = global_state.borrow_mut();
+    let mut borrowed_entries = global_entries.borrow_mut();
 
     let active_id = widget.active_id();
     match id_as_datetime_format(active_id.as_ref()) {
@@ -276,6 +322,14 @@ fn format_date_time_changed(
     let week_number: u32 = borrowed_state.week_number;
     let week_datetime_pair = get_absolute_week_start_end(week_number)?;
 
+    let entries = query_and_cache_entries(
+        week_number,
+        week_datetime_pair,
+        &borrowed_state.settings.core.database_dir,
+        &borrowed_state.settings.core.database_file_name,
+        &mut borrowed_entries.map,
+    )?;
+
     let date_range_label = borrowed_state.date_range_label.as_ref().unwrap();
     update_date_range_label(
         date_range_label,
@@ -284,7 +338,7 @@ fn format_date_time_changed(
     )?;
 
     update_text_view(
-        week_datetime_pair,
+        &entries,
         &status_bar,
         &borrowed_state.text_buffer,
         &borrowed_state.settings,
@@ -298,8 +352,10 @@ fn format_date_time_changed(
 fn format_duration_changed(
     widget: &ComboBoxText,
     global_state: GlobalStateRcRefCell,
+    global_entries: GlobalEntriesRcRefCell,
 ) -> Result<()> {
     let mut borrowed_state = global_state.borrow_mut();
+    let mut borrowed_entries = global_entries.borrow_mut();
 
     let active_id = widget.active_id();
     match id_as_duration_format(active_id.as_ref()) {
@@ -314,6 +370,14 @@ fn format_duration_changed(
     let week_number: u32 = borrowed_state.week_number;
     let week_datetime_pair = get_absolute_week_start_end(week_number)?;
 
+    let entries = query_and_cache_entries(
+        week_number,
+        week_datetime_pair,
+        &borrowed_state.settings.core.database_dir,
+        &borrowed_state.settings.core.database_file_name,
+        &mut borrowed_entries.map,
+    )?;
+
     let date_range_label = borrowed_state.date_range_label.as_ref().unwrap();
     update_date_range_label(
         date_range_label,
@@ -322,7 +386,7 @@ fn format_duration_changed(
     )?;
 
     update_text_view(
-        week_datetime_pair,
+        &entries,
         &status_bar,
         &borrowed_state.text_buffer,
         &borrowed_state.settings,
@@ -333,14 +397,27 @@ fn format_duration_changed(
     Ok(())
 }
 
-fn window_startup(_window: &ApplicationWindow, global_state: GlobalStateRcRefCell) -> Result<()> {
+fn window_startup(
+    _window: &ApplicationWindow,
+    global_state: GlobalStateRcRefCell,
+    global_entries: GlobalEntriesRcRefCell,
+) -> Result<()> {
     let borrowed_state = global_state.borrow_mut();
+    let mut borrowed_entries = global_entries.borrow_mut();
 
     let status_bar = borrowed_state.status_bar.as_ref().unwrap();
     let context_id = status_bar.context_id("window_startup");
     status_bar.push(context_id, "window_startup");
 
     let week_datetime_pair = get_absolute_week_start_end(borrowed_state.week_number)?;
+
+    let entries = query_and_cache_entries(
+        borrowed_state.week_number,
+        week_datetime_pair,
+        &borrowed_state.settings.core.database_dir,
+        &borrowed_state.settings.core.database_file_name,
+        &mut borrowed_entries.map,
+    )?;
 
     let date_range_label = borrowed_state.date_range_label.as_ref().unwrap();
     update_date_range_label(
@@ -350,7 +427,7 @@ fn window_startup(_window: &ApplicationWindow, global_state: GlobalStateRcRefCel
     )?;
 
     update_text_view(
-        week_datetime_pair,
+        &entries,
         &status_bar,
         &borrowed_state.text_buffer,
         &borrowed_state.settings,
@@ -364,8 +441,10 @@ fn preset_toggle_clicked(
     _widget: &ToggleButton,
     preset_name: String,
     global_state: GlobalStateRcRefCell,
+    global_entries: GlobalEntriesRcRefCell,
 ) -> Result<()> {
     let mut borrowed_state = global_state.borrow_mut();
+    let mut borrowed_entries = global_entries.borrow_mut();
 
     let toggled_state = match borrowed_state.preset_states.get(&preset_name) {
         Some(PresetState::Enable) => PresetState::Disable,
@@ -385,9 +464,18 @@ fn preset_toggle_clicked(
     }
 
     let week_datetime_pair = get_absolute_week_start_end(borrowed_state.week_number)?;
+
+    let entries = query_and_cache_entries(
+        borrowed_state.week_number,
+        week_datetime_pair,
+        &borrowed_state.settings.core.database_dir,
+        &borrowed_state.settings.core.database_file_name,
+        &mut borrowed_entries.map,
+    )?;
+
     let status_bar = borrowed_state.status_bar.as_ref().unwrap();
     update_text_view(
-        week_datetime_pair,
+        &entries,
         &status_bar,
         &borrowed_state.text_buffer,
         &borrowed_state.settings,
@@ -401,8 +489,9 @@ fn preset_toggle_clicked(
 fn build_preset_buttons(
     layout_widget: &Box,
     global_state: GlobalStateRcRefCell,
+    global_entries: GlobalEntriesRcRefCell,
     preset_names: &[String],
-    preset_states: &HashMap<String, PresetState>,
+    preset_states: &MapStringPresetState,
 ) {
     for preset_name in preset_names {
         let preset_name = preset_name.clone();
@@ -415,8 +504,12 @@ fn build_preset_buttons(
         toggle_button.set_active(enabled);
 
         toggle_button.connect_clicked(clone!(
-            @strong global_state => move |widget| {
-                preset_toggle_clicked(widget, preset_name.clone(), global_state.clone()).unwrap()
+            @strong global_state, @strong global_entries => move |widget| {
+                preset_toggle_clicked(
+                    widget,
+                    preset_name.clone(),
+                    global_state.clone(),
+                    global_entries.clone()).unwrap()
         }));
 
         layout_widget.add(&toggle_button);
@@ -424,7 +517,11 @@ fn build_preset_buttons(
 }
 
 /// Create the window, and all the widgets in the window.
-fn construct_window(week_number: u32, global_state: GlobalStateRcRefCell) -> ApplicationWindow {
+fn construct_window(
+    week_number: u32,
+    global_state: GlobalStateRcRefCell,
+    global_entries: GlobalEntriesRcRefCell,
+) -> ApplicationWindow {
     let mut borrowed_state = global_state.borrow_mut();
 
     let builder = Builder::from_string(constants::MAIN_WINDOW_GLADE);
@@ -465,6 +562,7 @@ fn construct_window(week_number: u32, global_state: GlobalStateRcRefCell) -> App
     build_preset_buttons(
         &preset_buttons_layout,
         global_state.clone(),
+        global_entries.clone(),
         &borrowed_state.all_preset_names,
         &borrowed_state.preset_states,
     );
@@ -530,40 +628,44 @@ fn construct_window(week_number: u32, global_state: GlobalStateRcRefCell) -> App
 
 /// Adds callbacks (known as "signals") to various events in GTK and
 /// widgets.
-fn setup_signals(global_state: GlobalStateRcRefCell) {
+fn setup_signals(global_state: GlobalStateRcRefCell, global_entries: GlobalEntriesRcRefCell) {
     let borrowed_state = global_state.borrow_mut();
 
     let week_number_spin_button = borrowed_state.week_number_spin_button.as_ref().unwrap();
     week_number_spin_button.connect_value_changed(clone!(
-    @strong global_state =>
+    @strong global_state, @strong global_entries =>
             move |widget| {
-                week_number_changed(&widget, global_state.clone()).unwrap()
+                week_number_changed(&widget, global_state.clone(), global_entries.clone()).unwrap()
             }));
 
     let format_date_time_combo_box = borrowed_state.format_date_time_combo_box.as_ref().unwrap();
     format_date_time_combo_box.connect_changed(clone!(
-    @strong global_state =>
+    @strong global_state, @strong global_entries =>
         move |widget| {
-            format_date_time_changed(&widget, global_state.clone()).unwrap()
+            format_date_time_changed(&widget, global_state.clone(), global_entries.clone()).unwrap()
         }));
 
     let format_duration_combo_box = borrowed_state.format_duration_combo_box.as_ref().unwrap();
     format_duration_combo_box.connect_changed(clone!(
-    @strong global_state =>
+    @strong global_state, @strong global_entries =>
         move |widget| {
-            format_duration_changed(&widget, global_state.clone()).unwrap()
+            format_duration_changed(&widget, global_state.clone(), global_entries.clone()).unwrap()
         }));
 }
 
-pub fn build_ui(app: &Application, global_state: GlobalStateRcRefCell) {
+pub fn build_ui(
+    app: &Application,
+    global_state: GlobalStateRcRefCell,
+    global_entries: GlobalEntriesRcRefCell,
+) {
     // Get the current week as the default value.
     let today_local_timezone = chrono::Local::now();
     let today_week = today_local_timezone.iso_week().week();
 
-    let window = construct_window(today_week, global_state.clone());
+    let window = construct_window(today_week, global_state.clone(), global_entries.clone());
     window.set_application(Some(app));
 
-    setup_signals(global_state.clone());
+    setup_signals(global_state.clone(), global_entries.clone());
 
-    window_startup(&window, global_state.clone()).unwrap();
+    window_startup(&window, global_state.clone(), global_entries.clone()).unwrap();
 }
