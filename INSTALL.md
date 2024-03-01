@@ -33,15 +33,17 @@ Alternatively if you want more control you can download the .zip file
 from GitHub, unzip the files, then use the provided Docker file to set
 up the needed environment.
 
+Use one of the provided Dockerfiles under the "./share/docker/" directory. The below example uses "almalinux9"
+
 ```bash
 # Go to the unzipped projecy directory.
 $ cd /path/to/project/directory/timetracker
 
 # Build Docker image (assumes the Docker Engine is already started)
-$ sudo docker build --file Dockerfile_centos7 -t timetracker-linux-centos7-build .
+$ sudo docker build --file share/docker/Dockerfile_almalinux9 -t timetracker-linux-almalinux9-build .
 
 # Go into the Docker container.
-$ sudo docker run --rm --interactive --volume "${PWD}:/timetracker" --tty timetracker-linux-centos7-build
+$ sudo docker run --rm --interactive --volume "${PWD}:/timetracker" --tty timetracker-linux-almalinux9-build
 
 # Now, inside the Docker coontainer, compile the project.
 > cargo build --release --verbose

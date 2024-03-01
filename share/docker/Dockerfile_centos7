@@ -1,0 +1,40 @@
+# To create and run the docker container in PowerShell or Bash:
+#
+# $ sudo systemctl start docker  # If docker engine isn't already started.
+# $ sudo docker build --file share/docker/Dockerfile_centos7 -t timetracker-linux-centos7-build .
+# $ sudo docker run --rm --interactive --volume "${PWD}:/timetracker" --tty timetracker-linux-centos7-build
+#
+# Then build the project:
+#
+# $ cargo test
+# $ cargo build --all --release
+#
+# To package the resulting binaries for release to users:
+# $ cd target/release/
+# $ zip ../../timetracker-v0.4.x.zip timetracker-print timetracker-print-gui timetracker-recorder timetracker-dump timetracker-configure
+#
+
+FROM centos:7
+
+# GCC (C++ compiler), Gnome Toolkit (GTK) and X11 dependencies.
+# 'zip' is installed for packaging.
+RUN yum install --assumeyes \
+       gcc \
+       glib2 \
+       glib2-devel \
+       pango-devel \
+       gtk3-devel \
+       atk-devel \
+       cairo-devel \
+       libX11 \
+       libX11-devel \
+       libXScrnSaver \
+       libXScrnSaver-devel \
+       zip
+
+# Install latest stable Rust with 'rustup'.
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
+    && source ${HOME}/.cargo/env
+
+WORKDIR /timetracker
+ENTRYPOINT ["bash"]

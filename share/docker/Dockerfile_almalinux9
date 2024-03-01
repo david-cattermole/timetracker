@@ -1,8 +1,8 @@
 # To create and run the docker container in PowerShell or Bash:
 #
 # $ sudo systemctl start docker  # If docker engine isn't already started.
-# $ sudo docker build --file Dockerfile_centos7 -t timetracker-linux-centos7-build .
-# $ sudo docker run --rm --interactive --volume "${PWD}:/timetracker" --tty timetracker-linux-centos7-build
+# $ sudo docker build --file share/docker/Dockerfile_almalinux9 -t timetracker-linux-almalinux9-build .
+# $ sudo docker run --rm --interactive --volume "${PWD}:/timetracker" --tty timetracker-linux-almalinux9-build
 #
 # Then build the project:
 #
@@ -14,11 +14,11 @@
 # $ zip ../../timetracker-v0.4.x.zip timetracker-print timetracker-print-gui timetracker-recorder timetracker-dump timetracker-configure
 #
 
-FROM centos:7
+FROM almalinux:9.3
 
 # GCC (C++ compiler), Gnome Toolkit (GTK) and X11 dependencies.
 # 'zip' is installed for packaging.
-RUN yum install --assumeyes \
+RUN dnf install --assumeyes \
        gcc \
        glib2 \
        glib2-devel \
