@@ -1,3 +1,5 @@
+# CentOS 7 is binary-compatible with Red Hat Enterprise Linux (RHEL) 7.
+#
 # To create and run the docker container in PowerShell or Bash:
 #
 # $ sudo systemctl start docker  # If docker engine isn't already started.
