@@ -17,6 +17,7 @@ use crate::utils::duration_format_as_id;
 use crate::utils::get_absolute_week_start_end;
 use crate::utils::id_as_datetime_format;
 use crate::utils::id_as_duration_format;
+use crate::CommandArguments;
 
 use anyhow::Result;
 use chrono::Datelike;
@@ -73,7 +74,10 @@ pub struct GlobalState {
 pub type GlobalStateRcRefCell = Rc<RefCell<GlobalState>>;
 
 impl GlobalState {
-    pub fn new_with_settings(settings: PrintGuiAppSettings) -> GlobalState {
+    pub fn new_with_settings(
+        settings: PrintGuiAppSettings,
+        args: &CommandArguments,
+    ) -> GlobalState {
         let text_buffer = TextBuffer::builder().build();
 
         let mut preset_states = MapStringPresetState::new();
@@ -103,6 +107,24 @@ impl GlobalState {
             preset_states.insert(preset_name.clone(), PresetState::Disable);
         }
 
+        // Get the current week as the default value.
+        let today_local_timezone = chrono::Local::now();
+
+        // Set the default week based on command line argument flag
+        // logic, and ensure the week number does not go below 1, or
+        // above 52.
+        let current_week = today_local_timezone.iso_week().week();
+        let week_number: u32 = if args.last_week {
+            assert!(current_week != 0);
+            if current_week == 1 {
+                52
+            } else {
+                current_week.checked_sub(1).unwrap()
+            }
+        } else {
+            ((current_week as i32) + args.relative_week).wrapping_rem_euclid(52) as u32
+        };
+
         GlobalState {
             settings: settings,
             all_preset_names: all_preset_names,
@@ -115,7 +137,7 @@ impl GlobalState {
             date_range_label: None,
             preset_buttons_layout: None,
             text_view: None,
-            week_number: 1,
+            week_number: week_number,
             text_buffer: text_buffer,
         }
     }
@@ -518,7 +540,6 @@ fn build_preset_buttons(
 
 /// Create the window, and all the widgets in the window.
 fn construct_window(
-    week_number: u32,
     global_state: GlobalStateRcRefCell,
     global_entries: GlobalEntriesRcRefCell,
 ) -> ApplicationWindow {
@@ -542,8 +563,7 @@ fn construct_window(
             .expect("Couldn't get 'week_number_spin_button' widget."),
     );
     let week_number_spin_button = borrowed_state.week_number_spin_button.as_ref().unwrap();
-    week_number_spin_button.set_value(week_number as f64);
-    borrowed_state.week_number = week_number;
+    week_number_spin_button.set_value(borrowed_state.week_number as f64);
 
     borrowed_state.text_view = Some(
         builder
@@ -658,11 +678,7 @@ pub fn build_ui(
     global_state: GlobalStateRcRefCell,
     global_entries: GlobalEntriesRcRefCell,
 ) {
-    // Get the current week as the default value.
-    let today_local_timezone = chrono::Local::now();
-    let today_week = today_local_timezone.iso_week().week();
-
-    let window = construct_window(today_week, global_state.clone(), global_entries.clone());
+    let window = construct_window(global_state.clone(), global_entries.clone());
     window.set_application(Some(app));
 
     setup_signals(global_state.clone(), global_entries.clone());

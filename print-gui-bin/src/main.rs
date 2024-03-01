@@ -41,8 +41,9 @@ fn main() -> Result<()> {
         .application_id(constants::APPLICATION_ID)
         .build();
 
-    let global_state: GlobalStateRcRefCell =
-        Rc::new(RefCell::new(GlobalState::new_with_settings(settings)));
+    let global_state: GlobalStateRcRefCell = Rc::new(RefCell::new(GlobalState::new_with_settings(
+        settings, &args,
+    )));
     let global_entries: GlobalEntriesRcRefCell = Rc::new(RefCell::new(GlobalEntries::new()));
 
     application.connect_activate(clone!(
@@ -52,7 +53,9 @@ fn main() -> Result<()> {
             }
     ));
 
-    let exit_code = application.run();
+    // All argument parsing is handled by our own parser, not GTK.
+    let args: &[&str] = &[];
+    let exit_code = application.run_with_args(args);
     if exit_code != glib::ExitCode::SUCCESS {
         bail!("GtkApplication exited with failure: {:?}", exit_code);
     }
