@@ -571,6 +571,7 @@ fn construct_window(
             .expect("Couldn't get 'text_view'."),
     );
     let text_view = borrowed_state.text_view.as_ref().unwrap();
+    text_view.set_monospace(true);
     text_view.set_buffer(Some(&borrowed_state.text_buffer));
 
     borrowed_state.preset_buttons_layout = Some(
