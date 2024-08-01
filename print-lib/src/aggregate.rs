@@ -110,7 +110,7 @@ pub fn sum_entry_activity_duration(
             continue;
         }
 
-        let increment_seconds = (time_block_unit.as_minutes() * 60) + 1;
+        let increment_seconds = time_block_unit.as_seconds() + 1;
         let seconds_current = entry.utc_time_seconds;
         let seconds_previous = seconds_current - increment_seconds;
         let seconds_next = seconds_current + increment_seconds;

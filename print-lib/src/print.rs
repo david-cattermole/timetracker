@@ -799,10 +799,10 @@ fn generate_entry_day_activity_lines(
         return;
     }
 
-    let mut duration_bins: Vec<f32> = Vec::with_capacity(bar_graph_character_num_width as usize);
-    duration_bins.resize(bar_graph_character_num_width as usize, 0.0);
+    let mut duration_bins: Vec<u64> = Vec::with_capacity(bar_graph_character_num_width as usize);
+    duration_bins.resize(bar_graph_character_num_width as usize, 0);
 
-    let mut max_duration_bin_value = 0.0;
+    let mut max_duration_bin_value = 0;
     let sorted_keys_length = sorted_keys.len() as f32;
     for (i, key) in sorted_keys.iter().enumerate() {
         let key_ratio_min = (i as f32) / sorted_keys_length;
@@ -813,13 +813,13 @@ fn generate_entry_day_activity_lines(
             (key_ratio_max * ((bar_graph_character_num_width) as f32)).round() as usize;
 
         if let Some(value) = duration_map.get(key) {
-            let increment_minutes = time_block_unit.as_minutes();
-            let mut num_minutes: u64 = value.num_minutes().try_into().unwrap();
-            if num_minutes > increment_minutes {
+            let increment_seconds = time_block_unit.as_seconds();
+            let mut num_seconds: u64 = value.num_seconds().try_into().unwrap();
+            if num_seconds > increment_seconds {
                 // This should not be possible - how can it be
                 // possible that we've recorded more active time
                 // in the time slot than physically possible?
-                num_minutes = increment_minutes;
+                num_seconds = increment_seconds;
             }
 
             for duration_bin in duration_bins
@@ -827,7 +827,7 @@ fn generate_entry_day_activity_lines(
                 .take(bin_index_max)
                 .skip(bin_index_min)
             {
-                *duration_bin += num_minutes as f32;
+                *duration_bin += num_seconds;
                 let current_value = *duration_bin;
                 if current_value > max_duration_bin_value {
                     max_duration_bin_value = current_value;
@@ -836,10 +836,10 @@ fn generate_entry_day_activity_lines(
         }
     }
 
-    let inverse_max_value = 1.0 / max_duration_bin_value;
+    let inverse_max_value = 1.0 / (max_duration_bin_value as f64);
     let duration_bins_normalized: Vec<_> = duration_bins
         .iter_mut()
-        .map(|x| *x * inverse_max_value)
+        .map(|x| ((*x as f64) * inverse_max_value) as f32)
         .collect();
 
     let key_first = &sorted_keys[0];

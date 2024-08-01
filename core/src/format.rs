@@ -223,6 +223,10 @@ impl TimeBlockUnit {
             TimeBlockUnit::SixtyMinutes => 60,
         }
     }
+
+    pub fn as_seconds(self) -> u64 {
+        self.as_minutes() * 60
+    }
 }
 
 impl fmt::Display for TimeBlockUnit {
