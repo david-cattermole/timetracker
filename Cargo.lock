@@ -1243,7 +1243,7 @@ dependencies = [
 
 [[package]]
 name = "timetracker-configure"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1260,7 +1260,7 @@ dependencies = [
 
 [[package]]
 name = "timetracker-core"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1280,7 +1280,7 @@ dependencies = [
 
 [[package]]
 name = "timetracker-dump"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1298,7 +1298,7 @@ dependencies = [
 
 [[package]]
 name = "timetracker-print"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1316,7 +1316,7 @@ dependencies = [
 
 [[package]]
 name = "timetracker-print-gui"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1334,7 +1334,7 @@ dependencies = [
 
 [[package]]
 name = "timetracker-print-lib"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1351,7 +1351,7 @@ dependencies = [
 
 [[package]]
 name = "timetracker-recorder"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "anyhow",
  "cc",
