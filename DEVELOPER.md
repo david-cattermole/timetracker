@@ -23,10 +23,10 @@ provided Docker files, like this:
 $ cd /path/to/project/directory/timetracker
 
 # Build Docker image (assumes the Docker Engine is already started)
-$ sudo docker build --file Dockerfile_centos7 -t timetracker-linux-centos7-build .
+$ sudo docker build --file share/docker/Dockerfile_almalinux9 -t timetracker-linux-almalinux9-build .
 
 # Go into the Docker container.
-$ sudo docker run --rm --interactive --volume "${PWD}:/timetracker" --tty timetracker-linux-centos7-build
+$ sudo docker run --rm --interactive --volume "${PWD}:/timetracker" --tty timetracker-linux-almalinux9-build
 ```
 
 The following sections assume you have all dependencies installed in
