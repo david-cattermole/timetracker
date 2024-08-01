@@ -782,7 +782,7 @@ fn generate_entry_day_activity_lines(
     weekday_datetime_pair: DateTimeLocalPair,
     time_block_unit: TimeBlockUnit,
 ) {
-    let add_fringe_datetimes = false;
+    let add_fringe_datetimes = true;
     let fill_datetimes_gaps = true;
 
     let duration_map = sum_entry_activity_duration(
