@@ -70,7 +70,7 @@ fn get_top_window_id(display_ptr: *mut x11::xlib::Display, start_window_id: c_ul
             )
         };
 
-        if status == (x11::xlib::Success as i32) {
+        if status != 0 {
             unsafe {
                 x11::xlib::XFree(child_window_ids as *mut c_void);
             };
@@ -171,6 +171,11 @@ fn get_process_id_from_window_tree(
         unsafe {
             x11::xlib::XSetErrorHandler(Some(handle_error_callback));
         }
+        // https://tronche.com/gui/x/xlib/window-information/XQueryTree.html
+        // XQueryTree() returns zero if it fails and nonzero if it succeeds
+        // Comparing with xlib::Success is incorrect as that assumes zero is success
+        // https://docs.rs/x11-dl/2.21.0/x11_dl/xlib/constant.Success.html
+        // pub const Success: c_uchar = 0;
         let status = unsafe {
             x11::xlib::XQueryTree(
                 display_ptr,
@@ -195,7 +200,7 @@ fn get_process_id_from_window_tree(
             }
         }
 
-        if status == (x11::xlib::Success as i32) {
+        if status != 0 {
             unsafe {
                 x11::xlib::XFree(child_window_ids as *mut c_void);
             };
